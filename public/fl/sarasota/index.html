@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Woodpecker Damage Repair Services in Sarasota, FL</title>
+  <link rel="canonical" href="/fl/sarasota/" />
+  <style>
+:root{
+  --bg:#fafaf9;
+  --surface:#ffffff;
+  --ink:#111827;
+  --muted:#4b5563;
+  --line:#e7e5e4;
+  --soft:#f5f5f4;
+
+  --cta:#16a34a;
+  --cta2:#15803d;
+
+  --max:980px;
+  --radius:16px;
+  --shadow:0 10px 30px rgba(17,24,39,0.06);
+  --shadow2:0 10px 24px rgba(17,24,39,0.08);
+}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{
+  margin:0;
+  font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  color:var(--ink);
+  background:var(--bg);
+  line-height:1.6;
+}
+a{color:inherit}
+a:focus{outline:2px solid var(--cta); outline-offset:2px}
+
+/* -----------------------
+   TOP NAV
+----------------------- */
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  background:rgba(250,250,249,0.92);
+  backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.topbar-inner{
+  max-width:var(--max);
+  margin:0 auto;
+  padding:12px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+}
+.brand{
+  font-weight:900;
+  letter-spacing:-0.02em;
+  text-decoration:none;
+}
+.nav{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.nav a{
+  text-decoration:none;
+  font-size:13px;
+  color:var(--muted);
+  padding:7px 10px;
+  border-radius:12px;
+  border:1px solid transparent;
+}
+.nav a:hover{
+  background:var(--soft);
+  border-color:var(--line);
+}
+.nav a[aria-current="page"]{
+  color:var(--ink);
+  background:var(--soft);
+  border:1px solid var(--line);
+}
+
+/* CTA button */
+.btn{
+  display:inline-block;
+  padding:9px 12px;
+  background:var(--cta);
+  color:#fff;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:900;
+  font-size:13px;
+  border:1px solid rgba(0,0,0,0.04);
+  box-shadow:0 8px 18px rgba(22,163,74,0.18);
+}
+.btn:hover{background:var(--cta2)}
+.btn:focus{outline:2px solid var(--cta2); outline-offset:2px}
+
+/* Keep CTA white in nav */
+.nav a.btn{
+  color:#fff;
+  background:var(--cta);
+  border-color:rgba(0,0,0,0.04);
+}
+.nav a.btn:hover{background:var(--cta2)}
+
+/* -----------------------
+   HERO
+----------------------- */
+header{
+  border-bottom:1px solid var(--line);
+  background:
+    radial-gradient(1200px 380px at 10% -20%, rgba(22,163,74,0.08), transparent 55%),
+    radial-gradient(900px 320px at 95% -25%, rgba(17,24,39,0.06), transparent 50%),
+    #fbfbfa;
+}
+.hero{
+  max-width:var(--max);
+  margin:0 auto;
+  padding:34px 18px 24px;
+  display:grid;
+  gap:10px;
+}
+.hero h1{
+  margin:0;
+  font-size:30px;
+  letter-spacing:-0.03em;
+  line-height:1.18;
+}
+.sub{
+  margin:0;
+  color:var(--muted);
+  max-width:78ch;
+  font-size:14px;
+}
+
+/* -----------------------
+   MAIN CONTENT
+----------------------- */
+main{
+  max-width:var(--max);
+  margin:0 auto;
+  padding:22px 18px 46px;
+}
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px;
+  box-shadow:var(--shadow);
+}
+
+/* Service image – responsive, smaller on desktop */
+.img{
+  margin-top:14px;
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:var(--soft);
+  box-shadow:var(--shadow2);
+  width:100%;
+}
+.img img{
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+/* ~50% width on desktop */
+@media (min-width: 900px){
+  .img{
+    max-width:50%;
+    margin-left:auto;
+    margin-right:auto;
+  }
+}
+
+h2{
+  margin:18px 0 8px;
+  font-size:16px;
+  letter-spacing:-0.01em;
+}
+p{margin:0 0 10px}
+.muted{color:var(--muted); font-size:13px}
+hr{border:0; border-top:1px solid var(--line); margin:18px 0}
+
+/* -----------------------
+   CITY GRID
+----------------------- */
+.city-grid{
+  list-style:none;
+  padding:0;
+  margin:10px 0 0;
+  display:grid;
+  gap:10px;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+}
+.city-grid a{
+  display:block;
+  text-decoration:none;
+  color:var(--ink);
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  font-weight:800;
+  font-size:14px;
+  box-shadow:0 10px 24px rgba(17,24,39,0.05);
+}
+.city-grid a:hover{
+  transform:translateY(-1px);
+  box-shadow:0 14px 28px rgba(17,24,39,0.08);
+}
+
+/* -----------------------
+   CALLOUT
+----------------------- */
+.callout{
+  margin:16px 0 12px;
+  padding:14px;
+  border-radius:14px;
+  border:1px solid rgba(22,163,74,0.22);
+  background:linear-gradient(180deg, rgba(22,163,74,0.08), rgba(22,163,74,0.03));
+}
+.callout-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:900;
+}
+.badge{
+  padding:3px 10px;
+  border-radius:999px;
+  background:rgba(22,163,74,0.14);
+  border:1px solid rgba(22,163,74,0.22);
+  font-size:12px;
+  font-weight:900;
+}
+
+/* -----------------------
+   CONTACT FORM (UPDATED)
+----------------------- */
+.form-grid{
+  margin-top:14px;
+  display:grid;
+  gap:14px;
+  grid-template-columns:1fr 320px;
+  align-items:start;
+}
+@media (max-width: 900px){
+  .form-grid{grid-template-columns:1fr}
+}
+
+.embed-card{
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
+  background:var(--soft);
+}
+
+.nx-center{
+  display:flex;
+  justify-content:center; /* mobile centered */
+}
+
+/* Networx container sizing (mobile-first) */
+#nx_form{
+  width:100%;
+  max-width:520px;
+  min-height:520px;
+}
+
+/* Force iframe to fill container */
+#networx_form_container iframe{
+  width:100% !important;
+  height:100% !important;
+  border:0 !important;
+}
+
+
+/* -----------------------
+   WHY BOX
+----------------------- */
+.why-box{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 10px 24px rgba(17,24,39,0.05);
+}
+.why-box h3{
+  margin:0 0 10px;
+  font-size:15px;
+}
+.why-list{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:grid;
+  gap:10px;
+}
+.why-item{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  color:var(--muted);
+  font-size:13px;
+}
+.tick{
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  background:rgba(22,163,74,0.12);
+  border:1px solid rgba(22,163,74,0.22);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.tick:before{
+  content:"✓";
+  font-weight:900;
+  font-size:12px;
+}
+
+/* -----------------------
+   FOOTER
+----------------------- */
+footer{
+  border-top:1px solid var(--line);
+  background:#fbfbfa;
+}
+.footer-inner{
+  max-width:var(--max);
+  margin:0 auto;
+  padding:28px 18px;
+  display:grid;
+  gap:10px;
+}
+.footer-links{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.footer-links a{
+  color:var(--muted);
+  text-decoration:none;
+  font-size:13px;
+}
+.small{
+  color:var(--muted);
+  font-size:12px;
+}
+
+/* -----------------------
+   MOBILE NAV FIX (KEY PART)
+----------------------- */
+@media (max-width: 640px){
+  .topbar-inner{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .nav{
+    justify-content: center;
+  }
+
+  .nav .btn{
+    width: 100%;
+    text-align: center;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">Woodpecker Damage Repair Company</a>
+      <nav class="nav" aria-label="Primary navigation"><a href="/" aria-current="page">Home</a><a href="/cost/">Cost</a><a href="/how-to/">How-To</a><a class="btn" href="/contact/">Get Free Estimate</a></nav>
+    </div>
+  </div>
+
+<header>
+  <div class="hero">
+    <h1>Woodpecker Damage Repair Services in Sarasota, FL</h1>
+    <p class="sub">Weather-tight siding and trim repairs that seal holes, match finishes, and reduce repeat damage.</p>
+  </div>
+</header>
+<main>
+  <section class="card">
+
+    <div class="img">
+      <img src="/picture.png" alt="Service image" loading="lazy" />
+    </div>
+    <h2>How Much Does Woodpecker Damage Repair Cost in Sarasota, FL?</h2>
+<p>In {City, State}, most woodpecker damage repair projects range from &lt;strong&gt;$360&lt;/strong&gt; to &lt;strong&gt;$1545&lt;/strong&gt;, depending on scope and access difficulty. Prices can vary based on local labor rates, property layout, and finish matching requirements. For a clearer breakdown of what affects pricing, you can {view our woodpecker damage repair cost guide}.</p><h2>What Is Woodpecker Damage Repair?</h2>
+<p>Woodpecker damage repair is the process of sealing and restoring holes in siding, trim, fascia, or soffits so the exterior is weather-tight again. The goal isn’t just to fill a hole—it’s to stabilize the surrounding material and restore a finish that won’t fail in the next storm.</p>
+<h2>Why Are Woodpeckers Pecking My House?</h2>
+<p>Woodpeckers usually peck homaes to search for insects, create a nesting cavity, or drum to mark territory. The reason matters because repairs last longer when you reduce what attracted the bird in the first place, instead of only patching the visible holes.</p>
+<h2>What Do Woodpecker Holes Look Like in Siding or Trim?</h2>
+<p>Woodpecker holes often appear as clean round openings, clusters of small probing holes, or larger cavities where the bird returned repeatedly. The pattern helps identify whether the issue is light probing or more serious nesting damage that may require replacement instead of patching.</p>
+<h2>Is Woodpecker Damage Bad for Your House?</h2>
+<p>Yes, woodpecker damage can be serious because even small holes can let water and pests into the wall system. Over time, repeated wetting can cause paint failure, swelling, rot, and bigger repairs than the original hole.</p>
+<h2>Does Woodpecker Damage Mean Termites?</h2>
+<p>Woodpecker activity doesn’t automatically mean termites, but it can signal insects in or around the wood. If you’re seeing soft wood, frass, or repeated pecking in one area, treat it as a ‘possible pest + repair’ situation so you don’t seal in a hidden problem.</p>
+<h2>Is Woodpecker Damage Covered by Insurance?</h2>
+<p>Insurance coverage for woodpecker damage depends on the policy and how the damage is classified. If you’re considering a claim, early photos and a repair assessment can help clarify what’s covered versus what’s considered maintenance or gradual wear.</p>
+<h2>When to Hire a Professional for Woodpecker Damage Repair</h2>
+<p>Hire a professional when damage is spread across multiple areas, the wood is soft or deteriorated, repairs require ladder work, or finish matching matters. Professional <a href="/">woodpecker damage repair services</a> typically include proper sealing, material stabilization, and finish blending so the repair holds up and looks consistent.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    
+    <h2>Next steps</h2>
+    <p class="sub">Ready to move forward? Request a free quote.</p>
+    <div>
+      <a class="btn" href="/contact/">Get Free Estimate</a>
+    </div>
+
+    <div class="footer-links">
+      <a href="/">Home</a>
+      <a href="/cost/">Cost</a>
+      <a href="/how-to/">How-To</a>
+    </div>
+    <div class="small">© Woodpecker Damage Repair Company. All rights reserved.</div>
+  </div>
+</footer>
+</body>
+</html>
