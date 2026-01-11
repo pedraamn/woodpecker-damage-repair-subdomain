@@ -11,17 +11,23 @@ Static site generator (no JS) for a single-service, multi-city site.
   - Output directory: public
 
 Key design choice (to keep it working everywhere with no middleware/worker):
-- All internal links are ROOT-RELATIVE PATHS like /ca/san-jose/
+- All internal links are ROOT-RELATIVE PATHS like /san-jose-ca/
 - Canonicals + sitemap <loc> can be ABSOLUTE when SITE_ORIGIN is set,
   otherwise they fall back to paths (great for localhost).
 
-Set SITE_ORIGIN for “real” canonical/sitemap:
-  export SITE_ORIGIN="https://woodpecker-damage-repair-subdomain.vercel.app"
-  python3 generate.py
+ENV VARS (recommended on Vercel):
+  SITE_ORIGIN="https://woodpeckerdamagerepaircompany.com"
+    - Used for root pages (/cost, /how-to, /contact) canonical + sitemap.
 
-On Vercel: add an Environment Variable:
-  SITE_ORIGIN = https://woodpecker-damage-repair-subdomain.vercel.app
-(or your production domain)
+  SUBDOMAIN_BASE="woodpeckerdamagerepaircompany.com"
+    - If set, city pages will canonicalize to:
+      https://<city>-<state>.<SUBDOMAIN_BASE>/
+    - This matches your vercel.json host-based rewrites.
+
+Example:
+  export SITE_ORIGIN="https://woodpeckerdamagerepaircompany.com"
+  export SUBDOMAIN_BASE="woodpeckerdamagerepaircompany.com"
+  python3 generate.py
 """
 
 from __future__ import annotations
@@ -57,9 +63,10 @@ class SiteConfig:
   output_dir: Path = Path("public")
   image_filename: str = "picture.png"  # sits next to generate.py
 
-  # Optional canonical/sitemap origin (set via env var SITE_ORIGIN)
-  # Example: https://woodpecker-damage-repair-subdomain.vercel.app
+  # Canonical/sitemap origin for ROOT PAGES (set via env var SITE_ORIGIN)
+  # Example: https://woodpeckerdamagerepaircompany.com
   site_origin: str = "https://woodpeckerdamagerepaircompany.com"
+  subdomain_base: str = "woodpeckerdamagerepaircompany.com"
 
   # Pricing (base range; city pages may apply multipliers)
   cost_low: int = 350
@@ -216,10 +223,6 @@ def city_state_slug(city: str, state: str) -> str:
   return f"{slugify(city)}-{slugify(state)}"
 
 
-def state_city_slug(city: str, state: str) -> str:
-  return f"{slugify(state)}/{slugify(city)}"
-
-
 def clamp_title(title: str, max_chars: int = 70) -> str:
   if len(title) <= max_chars:
     return title
@@ -228,19 +231,6 @@ def clamp_title(title: str, max_chars: int = 70) -> str:
 
 def city_title(city: str, state: str) -> str:
   return clamp_title(f"{CONFIG.h1_short} in {city}, {state}", 70)
-
-
-def state_title(state: str) -> str:
-  return clamp_title(f"{CONFIG.h1_short} in {state}", 70)
-
-
-def cities_by_state(cities: tuple[CityWithCol, ...]) -> dict[str, list[CityWithCol]]:
-  m: dict[str, list[CityWithCol]] = {}
-  for city, state, col in cities:
-    m.setdefault(state, []).append((city, state, col))
-  for st in m:
-    m[st].sort(key=lambda t: t[0].lower())
-  return m
 
 
 def write_text(out_path: Path, content: str) -> None:
@@ -263,8 +253,8 @@ def copy_site_image(*, src_dir: Path, out_dir: Path, filename: str) -> None:
 
 def canonical_href(path: str) -> str:
   """
-  Returns an absolute canonical URL if SITE_ORIGIN is set; otherwise returns a path.
-  This keeps localhost + preview deployments painless.
+  Canonical for ROOT pages.
+  If SITE_ORIGIN is set, returns absolute URL; otherwise returns a path.
   """
   path = "/" + path.lstrip("/")
   if CONFIG.site_origin:
@@ -272,9 +262,25 @@ def canonical_href(path: str) -> str:
   return path
 
 
+def city_canonical(city: str, state: str) -> str:
+  """
+  Canonical for CITY pages in subdomain mode.
+
+  If SUBDOMAIN_BASE is set:
+    https://<slug>.<base>/
+  else:
+    fall back to root-based canonical_href("/<slug>/")
+  """
+  slug = city_state_slug(city, state)
+  if CONFIG.subdomain_base:
+    return f"https://{slug}.{CONFIG.subdomain_base.strip().lstrip('.')}/"
+  return canonical_href(f"/{slug}/")
+
+
 # -----------------------
 # THEME (pure CSS, minimal, fast)
 # -----------------------
+
 CSS = """
 :root{
   --bg:#fafaf9;
@@ -621,6 +627,11 @@ footer{
 """.strip()
 
 
+# IMPORTANT:
+# Keep your exact CSS. I’m not editing it here to save space in this message.
+# Replace the line above with your full CSS block exactly as-is.
+
+
 # -----------------------
 # HTML BUILDING BLOCKS
 # -----------------------
@@ -639,14 +650,14 @@ def nav_html(current: str) -> str:
   )
 
 
-def base_html(*, title: str, canonical_path: str, current_nav: str, body: str) -> str:
+def base_html(*, title: str, canonical_url: str, current_nav: str, body: str) -> str:
   return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{esc(title)}</title>
-  <link rel="canonical" href="{esc(canonical_href(canonical_path))}" />
+  <link rel="canonical" href="{esc(canonical_url)}" />
   <style>
 {CSS}
   </style>
@@ -775,66 +786,32 @@ def location_cost_section(city: str, state: str, col: float) -> str:
 # -----------------------
 # PAGE FACTORY
 # -----------------------
-def make_page(*, h1: str, canonical: str, nav_key: str, sub: str, inner: str, show_image: bool = True, show_footer_cta: bool = True) -> str:
+def make_page(*, h1: str, canonical_url: str, nav_key: str, sub: str, inner: str, show_image: bool = True, show_footer_cta: bool = True) -> str:
   h1 = clamp_title(h1, 70)
   title = h1  # enforce title == h1
   return base_html(
     title=title,
-    canonical_path=canonical,
+    canonical_url=canonical_url,
     current_nav=nav_key,
     body=page_shell(h1=h1, sub=sub, inner_html=inner, show_image=show_image, show_footer_cta=show_footer_cta),
   )
 
+
 def homepage_html() -> str:
-    city_links = "\n".join(
-        f'<li><a href="{esc("/" + city_state_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
-        for city, state, _ in CITIES
-    )
-    inner = (
-        make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
-        + """
+  city_links = "\n".join(
+    f'<li><a href="{esc("/" + city_state_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
+    for city, state, _ in CITIES
+  )
+
+  inner = (
+    make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
+    + """
 <hr />
 <h2>Choose your city</h2>
 <p class="muted">We provide services nationwide, including in the following cities:</p>
 <ul class="city-grid">
 """
-        + city_links
-        + f"""
-</ul>
-<hr />
-<p class="muted">
-  Also available: <a href="/cost/">{esc(CONFIG.cost_title)}</a> and <a href="/how-to/">{esc(CONFIG.howto_title)}</a>.
-</p>
-"""
-    )
-
-    return make_page(
-        h1=CONFIG.h1_title,
-        canonical="/",
-        nav_key="home",
-        sub=CONFIG.h1_sub,
-        inner=inner,
-    )
-
-
-def state_homepage_html() -> str:
-  by_state = cities_by_state(CITIES)
-  states = sorted(by_state.keys())
-
-  state_links = "\n".join(
-    f'<li><a href="{esc("/" + slugify(st) + "/")}">{esc(st)}</a></li>'
-    for st in states
-  )
-
-  inner = (
-    make_section(headings=list(CONFIG.main_h2), paras=list(CONFIG.main_p))
-    + """
-<hr />
-<h2>Choose your state</h2>
-<p class="muted">We provide services nationwide, including in the following states:</p>
-<ul class="city-grid">
-"""
-    + state_links
+    + city_links
     + f"""
 </ul>
 <hr />
@@ -846,34 +823,7 @@ def state_homepage_html() -> str:
 
   return make_page(
     h1=CONFIG.h1_title,
-    canonical="/",
-    nav_key="home",
-    sub=CONFIG.h1_sub,
-    inner=inner,
-  )
-
-
-def state_page_html(state: str, cities: list[CityWithCol]) -> str:
-  city_links = "\n".join(
-    f'<li><a href="{esc("/" + state_city_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
-    for city, state, _ in cities
-  )
-
-  inner = f"""
-<h2>Cities we serve in {esc(state)}</h2>
-<p class="muted">Choose your city to see local details and typical pricing ranges.</p>
-<ul class="city-grid">
-{city_links}
-</ul>
-<hr />
-<p class="muted">
-  Also available: <a href="/cost/">{esc(CONFIG.cost_title)}</a> and <a href="/how-to/">{esc(CONFIG.howto_title)}</a>.
-</p>
-""".strip()
-
-  return make_page(
-    h1=state_title(state),
-    canonical=f"/{slugify(state)}/",
+    canonical_url=canonical_href("/"),
     nav_key="home",
     sub=CONFIG.h1_sub,
     inner=inner,
@@ -924,7 +874,7 @@ def contact_page_html() -> str:
 
   return make_page(
     h1=h1,
-    canonical="/contact/",
+    canonical_url=canonical_href("/contact/"),
     nav_key="contact",
     sub=sub,
     inner=inner,
@@ -939,9 +889,10 @@ def city_page_html(city: str, state: str, col: float) -> str:
     + make_section(headings=list(CONFIG.main_h2), paras=list(CONFIG.main_p))
   )
 
+  # SUBDOMAIN MODE: canonical should be the subdomain root, not /<slug>/
   return make_page(
     h1=city_title(city, state),
-    canonical=f"/{state_city_slug(city, state)}/",
+    canonical_url=city_canonical(city, state),
     nav_key="home",
     sub=CONFIG.h1_sub,
     inner=inner,
@@ -951,7 +902,7 @@ def city_page_html(city: str, state: str, col: float) -> str:
 def cost_page_html() -> str:
   return make_page(
     h1=CONFIG.cost_title,
-    canonical="/cost/",
+    canonical_url=canonical_href("/cost/"),
     nav_key="cost",
     sub=CONFIG.cost_sub,
     inner=make_section(headings=list(CONFIG.cost_h2), paras=list(CONFIG.cost_p)),
@@ -961,7 +912,7 @@ def cost_page_html() -> str:
 def howto_page_html() -> str:
   return make_page(
     h1=CONFIG.howto_title,
-    canonical="/how-to/",
+    canonical_url=canonical_href("/how-to/"),
     nav_key="howto",
     sub=CONFIG.howto_sub,
     inner=make_section(headings=list(CONFIG.howto_h2), paras=list(CONFIG.howto_p)),
@@ -1016,34 +967,32 @@ def main() -> None:
   write_text(out / "how-to" / "index.html", howto_page_html())
   write_text(out / "contact" / "index.html", contact_page_html())
 
-  # City pages
+  # City pages (folders: /<city>-<state>/index.html)
   for city, state, col in CITIES:
-      write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
+    write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
 
-  # robots + sitemap + wrangler
-  urls = ["/", "/cost/", "/how-to/"] + [f"/{city_state_slug(c, s)}/" for c, s, _ in CITIES]
-  write_text(out / "robots.txt", robots_txt())
-  write_text(out / "sitemap.xml", sitemap_xml(urls))
-  write_text(script_dir / "wrangler.jsonc", wrangler_content())
-
-  # robots + sitemap + wrangler
-  # If SITE_ORIGIN is set, these become absolute URLs; otherwise they are paths (fine for local testing).
+  # Sitemap:
+  # - Root pages use SITE_ORIGIN if set
+  # - City pages use subdomain canonicals if SUBDOMAIN_BASE is set
   urls: list[str] = [
     canonical_href("/"),
     canonical_href("/cost/"),
     canonical_href("/how-to/"),
     canonical_href("/contact/"),
   ]
-
-  # City pages
-  urls += [canonical_href(f"/{city_state_slug(c, s)}/") for c, s, _ in CITIES]
+  urls += [city_canonical(c, s) for c, s, _ in CITIES]
 
   write_text(out / "robots.txt", robots_txt())
   write_text(out / "sitemap.xml", sitemap_xml(urls))
   write_text(script_dir / "wrangler.jsonc", wrangler_content())
 
   print(f"✅ Generated site into: {out.resolve()}")
+  if CONFIG.site_origin:
+    print(f"✅ SITE_ORIGIN={CONFIG.site_origin}")
+  if CONFIG.subdomain_base:
+    print(f"✅ SUBDOMAIN_BASE={CONFIG.subdomain_base}")
 
 
 if __name__ == "__main__":
   main()
+
