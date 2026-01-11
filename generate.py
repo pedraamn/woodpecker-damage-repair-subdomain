@@ -2,17 +2,26 @@
 """
 Static site generator (no JS) for a single-service, multi-city site.
 
-NEW IA (2-level):
-- /                 -> lists STATES
-- /<state>/         -> lists CITIES in that state
-- /<city>-<state>/  -> city page (same as before)
-- /cost/
-- /how-to/
-- /contact/
+✅ Works locally:
+  python3 generate.py
+  python3 -m http.server 8000 --directory public
 
-Cloudflare Pages:
-- Build command: (empty)
-- Output directory: public
+✅ Works on Vercel as a pure static deploy:
+  - Build command: python3 generate.py
+  - Output directory: public
+
+Key design choice (to keep it working everywhere with no middleware/worker):
+- All internal links are ROOT-RELATIVE PATHS like /ca/san-jose/
+- Canonicals + sitemap <loc> can be ABSOLUTE when SITE_ORIGIN is set,
+  otherwise they fall back to paths (great for localhost).
+
+Set SITE_ORIGIN for “real” canonical/sitemap:
+  export SITE_ORIGIN="https://woodpecker-damage-repair-subdomain.vercel.app"
+  python3 generate.py
+
+On Vercel: add an Environment Variable:
+  SITE_ORIGIN = https://woodpecker-damage-repair-subdomain.vercel.app
+(or your production domain)
 """
 
 from __future__ import annotations
@@ -22,6 +31,7 @@ from pathlib import Path
 from datetime import date
 import csv
 import html
+import os
 import re
 import shutil
 
@@ -46,6 +56,10 @@ class SiteConfig:
   # Build / assets
   output_dir: Path = Path("public")
   image_filename: str = "picture.png"  # sits next to generate.py
+
+  # Optional canonical/sitemap origin (set via env var SITE_ORIGIN)
+  # Example: https://woodpecker-damage-repair-subdomain.vercel.app
+  site_origin: str | None = os.environ.get("SITE_ORIGIN")
 
   # Pricing (base range; city pages may apply multipliers)
   cost_low: int = 350
@@ -125,10 +139,10 @@ class SiteConfig:
     "Woodpecker damage repair typically costs {cost_lo} to {cost_hi}. Replacement and finish blending are what most often increase total cost. Access height and scattered damage add labor time fast. Pairing repair with deterrence reduces the odds you pay twice.",
   )
 
-  # LOCAL COST (city-locked variant)
+  # LOCAL COST
   location_cost_h2: str = "How Much Does Woodpecker Damage Repair Cost in {City, State}?"
   location_cost_p: str = (
-    "In {City, State}, most woodpecker damage repair projects range from {cost_lo} to {cost_hi}, "
+    "In <strong>{City, State}</strong>, most woodpecker damage repair projects range from {cost_lo} to {cost_hi}, "
     "depending on scope and access difficulty. Prices can vary based on local labor rates, property layout, and finish matching requirements. "
     "For a clearer breakdown of what affects pricing, you can {view our woodpecker damage repair cost guide}."
   )
@@ -171,7 +185,9 @@ def load_cities_from_csv(path: Path) -> tuple[CityWithCol, ...]:
       try:
         col = float(col_raw)
       except ValueError as e:
-        raise ValueError(f"Invalid col value at CSV line {i}: {col_raw!r}") from e
+        raise ValueError(
+          f"Invalid col value at CSV line {i}: {col_raw!r}"
+        ) from e
 
       cities.append((city, state, col))
 
@@ -200,9 +216,8 @@ def city_state_slug(city: str, state: str) -> str:
   return f"{slugify(city)}-{slugify(state)}"
 
 
-def state_slug(state: str) -> str:
-  # state is like "CA"
-  return slugify(state)
+def state_city_slug(city: str, state: str) -> str:
+  return f"{slugify(state)}/{slugify(city)}"
 
 
 def clamp_title(title: str, max_chars: int = 70) -> str:
@@ -246,6 +261,17 @@ def copy_site_image(*, src_dir: Path, out_dir: Path, filename: str) -> None:
   shutil.copyfile(src, out_dir / filename)
 
 
+def canonical_href(path: str) -> str:
+  """
+  Returns an absolute canonical URL if SITE_ORIGIN is set; otherwise returns a path.
+  This keeps localhost + preview deployments painless.
+  """
+  path = "/" + path.lstrip("/")
+  if CONFIG.site_origin:
+    return CONFIG.site_origin.rstrip("/") + path
+  return path
+
+
 # -----------------------
 # THEME (pure CSS, minimal, fast)
 # -----------------------
@@ -278,7 +304,9 @@ body{
 a{color:inherit}
 a:focus{outline:2px solid var(--cta); outline-offset:2px}
 
-/* TOP NAV */
+/* -----------------------
+   TOP NAV
+----------------------- */
 .topbar{
   position:sticky;
   top:0;
@@ -326,7 +354,7 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
   border:1px solid var(--line);
 }
 
-/* CTA */
+/* CTA button */
 .btn{
   display:inline-block;
   padding:9px 12px;
@@ -341,6 +369,8 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .btn:hover{background:var(--cta2)}
 .btn:focus{outline:2px solid var(--cta2); outline-offset:2px}
+
+/* Keep CTA white in nav */
 .nav a.btn{
   color:#fff;
   background:var(--cta);
@@ -348,7 +378,9 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .nav a.btn:hover{background:var(--cta2)}
 
-/* HERO */
+/* -----------------------
+   HERO
+----------------------- */
 header{
   border-bottom:1px solid var(--line);
   background:
@@ -376,7 +408,9 @@ header{
   font-size:14px;
 }
 
-/* MAIN */
+/* -----------------------
+   MAIN CONTENT
+----------------------- */
 main{
   max-width:var(--max);
   margin:0 auto;
@@ -390,7 +424,7 @@ main{
   box-shadow:var(--shadow);
 }
 
-/* Image */
+/* Service image – responsive, smaller on desktop */
 .img{
   margin-top:14px;
   border-radius:14px;
@@ -405,6 +439,8 @@ main{
   width:100%;
   height:auto;
 }
+
+/* ~50% width on desktop */
 @media (min-width: 900px){
   .img{
     max-width:50%;
@@ -422,7 +458,9 @@ p{margin:0 0 10px}
 .muted{color:var(--muted); font-size:13px}
 hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 
-/* GRID (used for states + cities) */
+/* -----------------------
+   CITY GRID
+----------------------- */
 .city-grid{
   list-style:none;
   padding:0;
@@ -448,30 +486,9 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   box-shadow:0 14px 28px rgba(17,24,39,0.08);
 }
 
-/* CALLOUT */
-.callout{
-  margin:16px 0 12px;
-  padding:14px;
-  border-radius:14px;
-  border:1px solid rgba(22,163,74,0.22);
-  background:linear-gradient(180deg, rgba(22,163,74,0.08), rgba(22,163,74,0.03));
-}
-.callout-title{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-weight:900;
-}
-.badge{
-  padding:3px 10px;
-  border-radius:999px;
-  background:rgba(22,163,74,0.14);
-  border:1px solid rgba(22,163,74,0.22);
-  font-size:12px;
-  font-weight:900;
-}
-
-/* CONTACT */
+/* -----------------------
+   CONTACT FORM
+----------------------- */
 .form-grid{
   margin-top:14px;
   display:grid;
@@ -482,28 +499,36 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 @media (max-width: 900px){
   .form-grid{grid-template-columns:1fr}
 }
+
 .embed-card{
   border:1px solid var(--line);
   border-radius:14px;
   padding:18px;
   background:var(--soft);
 }
+
 .nx-center{
   display:flex;
   justify-content:center;
 }
+
+/* Networx container sizing (mobile-first) */
 #nx_form{
   width:100%;
   max-width:520px;
   min-height:520px;
 }
+
+/* Force iframe to fill container */
 #networx_form_container iframe{
   width:100% !important;
   height:100% !important;
   border:0 !important;
 }
 
-/* WHY BOX */
+/* -----------------------
+   WHY BOX
+----------------------- */
 .why-box{
   background:#fff;
   border:1px solid var(--line);
@@ -545,7 +570,9 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   font-size:12px;
 }
 
-/* FOOTER */
+/* -----------------------
+   FOOTER
+----------------------- */
 footer{
   border-top:1px solid var(--line);
   background:#fbfbfa;
@@ -572,16 +599,20 @@ footer{
   font-size:12px;
 }
 
-/* MOBILE NAV FIX */
+/* -----------------------
+   MOBILE NAV FIX
+----------------------- */
 @media (max-width: 640px){
   .topbar-inner{
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
+
   .nav{
     justify-content: center;
   }
+
   .nav .btn{
     width: 100%;
     text-align: center;
@@ -615,7 +646,7 @@ def base_html(*, title: str, canonical_path: str, current_nav: str, body: str) -
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{esc(title)}</title>
-  <link rel="canonical" href="{esc(canonical_path)}" />
+  <link rel="canonical" href="{esc(canonical_href(canonical_path))}" />
   <style>
 {CSS}
   </style>
@@ -663,7 +694,6 @@ def footer_block(*, show_cta: bool = True) -> str:
       <a href="/">Home</a>
       <a href="/cost/">Cost</a>
       <a href="/how-to/">How-To</a>
-      <a href="/contact/">Contact</a>
     </div>
     <div class="small">© {esc(CONFIG.brand_name)}. All rights reserved.</div>
   </div>
@@ -699,13 +729,18 @@ def page_shell(*, h1: str, sub: str, inner_html: str, show_image: bool = True, s
 # CONTENT SECTIONS
 # -----------------------
 def linkify_curly(text: str) -> str:
-  parts = []
+  """
+  Replace {word} with a link to the homepage using that word as link text.
+  """
+  parts: list[str] = []
   last = 0
 
   for m in re.finditer(r"\{([^}]+)\}", text):
     parts.append(esc(text[last:m.start()]))
+
     word = m.group(1)
     parts.append(f'<a href="/">{esc(word)}</a>')
+
     last = m.end()
 
   parts.append(esc(text[last:]))
@@ -713,7 +748,7 @@ def linkify_curly(text: str) -> str:
 
 
 def make_section(*, headings: list[str], paras: list[str]) -> str:
-  parts = []
+  parts: list[str] = []
   for h2, p in zip(headings, paras):
     parts.append(f"<h2>{esc(h2)}</h2>")
     parts.append(f"<p>{linkify_curly(p)}</p>")
@@ -726,7 +761,7 @@ def location_cost_section(city: str, state: str, col: float) -> str:
 
   h2 = CONFIG.location_cost_h2.replace("{City, State}", f"{city}, {state}")
 
-  # NOTE: your original had a broken replace here. Keep it simple and correct:
+  # This is HTML content; do NOT esc() the whole thing
   p = (
     CONFIG.location_cost_p
     .replace("{City, State}", f"{city}, {state}")
@@ -734,7 +769,6 @@ def location_cost_section(city: str, state: str, col: float) -> str:
     .replace("{cost_hi}", cost_hi)
   )
 
-  # IMPORTANT: Don't esc(p) because it contains <strong> and linkified text.
   return f"<h2>{esc(h2)}</h2>\n<p>{linkify_curly(p)}</p>"
 
 
@@ -752,20 +786,17 @@ def make_page(*, h1: str, canonical: str, nav_key: str, sub: str, inner: str, sh
   )
 
 
-# -----------------------
-# PAGES
-# -----------------------
-def homepage_html() -> str:
+def state_homepage_html() -> str:
   by_state = cities_by_state(CITIES)
   states = sorted(by_state.keys())
 
   state_links = "\n".join(
-    f'<li><a href="{esc("/" + state_slug(st) + "/")}">{esc(st)}</a></li>'
+    f'<li><a href="{esc("/" + slugify(st) + "/")}">{esc(st)}</a></li>'
     for st in states
   )
 
   inner = (
-    make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
+    make_section(headings=list(CONFIG.main_h2), paras=list(CONFIG.main_p))
     + """
 <hr />
 <h2>Choose your state</h2>
@@ -793,7 +824,7 @@ def homepage_html() -> str:
 
 def state_page_html(state: str, cities: list[CityWithCol]) -> str:
   city_links = "\n".join(
-    f'<li><a href="{esc("/" + city_state_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
+    f'<li><a href="{esc("/" + state_city_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
     for city, state, _ in cities
   )
 
@@ -811,45 +842,10 @@ def state_page_html(state: str, cities: list[CityWithCol]) -> str:
 
   return make_page(
     h1=state_title(state),
-    canonical=f"/{state_slug(state)}/",
+    canonical=f"/{slugify(state)}/",
     nav_key="home",
     sub=CONFIG.h1_sub,
     inner=inner,
-  )
-
-
-def city_page_html(city: str, state: str, col: float) -> str:
-  inner = (
-    location_cost_section(city, state, col)
-    + make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
-  )
-
-  return make_page(
-    h1=city_title(city, state),
-    canonical=f"/{city_state_slug(city, state)}/",
-    nav_key="home",
-    sub=CONFIG.h1_sub,
-    inner=inner,
-  )
-
-
-def cost_page_html() -> str:
-  return make_page(
-    h1=CONFIG.cost_title,
-    canonical="/cost/",
-    nav_key="cost",
-    sub=CONFIG.cost_sub,
-    inner=make_section(headings=CONFIG.cost_h2, paras=CONFIG.cost_p),
-  )
-
-
-def howto_page_html() -> str:
-  return make_page(
-    h1=CONFIG.howto_title,
-    canonical="/how-to/",
-    nav_key="howto",
-    sub=CONFIG.howto_sub,
-    inner=make_section(headings=CONFIG.howto_h2, paras=CONFIG.howto_p),
   )
 
 
@@ -906,6 +902,41 @@ def contact_page_html() -> str:
   )
 
 
+def city_page_html(city: str, state: str, col: float) -> str:
+  inner = (
+    location_cost_section(city, state, col)
+    + make_section(headings=list(CONFIG.main_h2), paras=list(CONFIG.main_p))
+  )
+
+  return make_page(
+    h1=city_title(city, state),
+    canonical=f"/{state_city_slug(city, state)}/",
+    nav_key="home",
+    sub=CONFIG.h1_sub,
+    inner=inner,
+  )
+
+
+def cost_page_html() -> str:
+  return make_page(
+    h1=CONFIG.cost_title,
+    canonical="/cost/",
+    nav_key="cost",
+    sub=CONFIG.cost_sub,
+    inner=make_section(headings=list(CONFIG.cost_h2), paras=list(CONFIG.cost_p)),
+  )
+
+
+def howto_page_html() -> str:
+  return make_page(
+    h1=CONFIG.howto_title,
+    canonical="/how-to/",
+    nav_key="howto",
+    sub=CONFIG.howto_sub,
+    inner=make_section(headings=list(CONFIG.howto_h2), paras=list(CONFIG.howto_p)),
+  )
+
+
 # -----------------------
 # ROBOTS + SITEMAP + WRANGLER
 # -----------------------
@@ -917,7 +948,7 @@ def sitemap_xml(urls: list[str]) -> str:
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls)
+    + "".join(f"  <url><loc>{esc(u)}</loc></url>\n" for u in urls)
     + "</urlset>\n"
   )
 
@@ -945,32 +976,45 @@ def main() -> None:
 
   reset_output_dir(out)
 
+  # Copy shared image into /public/
   copy_site_image(src_dir=script_dir, out_dir=out, filename=CONFIG.image_filename)
 
   # Core pages
-  write_text(out / "index.html", homepage_html())
+  write_text(out / "index.html", state_homepage_html())
   write_text(out / "cost" / "index.html", cost_page_html())
   write_text(out / "how-to" / "index.html", howto_page_html())
   write_text(out / "contact" / "index.html", contact_page_html())
 
-  # State pages + city pages
+  # State pages + city pages (filesystem: /{state}/{city}/)
   by_state = cities_by_state(CITIES)
 
   for st, city_list in by_state.items():
-    write_text(out / state_slug(st) / "index.html", state_page_html(st, city_list))
-    for city, state, col in city_list:
-      write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
+    write_text(out / slugify(st) / "index.html", state_page_html(st, city_list))
 
-  # robots + sitemap + wrangler 
-  urls = ["/", "/cost/", "/how-to/", "/contact/"]
-  urls += [f"/{state_slug(st)}/" for st in sorted(by_state.keys())]
-  urls += [f"/{city_state_slug(c, s)}/" for c, s, _ in CITIES]
+    for city, state, col in city_list:
+      write_text(out / state_city_slug(city, state) / "index.html", city_page_html(city, state, col))
+
+  # robots + sitemap + wrangler
+  # If SITE_ORIGIN is set, these become absolute URLs; otherwise they are paths (fine for local testing).
+  urls: list[str] = [
+    canonical_href("/"),
+    canonical_href("/cost/"),
+    canonical_href("/how-to/"),
+    canonical_href("/contact/"),
+  ]
+
+  # State pages
+  for st in sorted(cities_by_state(CITIES).keys()):
+    urls.append(canonical_href(f"/{slugify(st)}/"))
+
+  # City pages
+  urls += [canonical_href(f"/{state_city_slug(c, s)}/") for c, s, _ in CITIES]
 
   write_text(out / "robots.txt", robots_txt())
   write_text(out / "sitemap.xml", sitemap_xml(urls))
   write_text(script_dir / "wrangler.jsonc", wrangler_content())
 
-  print(f"✅ Generated {len(urls)} URLs into: {out.resolve()}")
+  print(f"✅ Generated site into: {out.resolve()}")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Woodpecker Damage Repair Services in NH</title>
-  <link rel="canonical" href="/nh/" />
+  <link rel="canonical" href="https://woodpecker-damage-repair-subdomain.vercel.app/nh/" />
   <style>
 :root{
   --bg:#fafaf9;
@@ -34,7 +34,9 @@ body{
 a{color:inherit}
 a:focus{outline:2px solid var(--cta); outline-offset:2px}
 
-/* TOP NAV */
+/* -----------------------
+   TOP NAV
+----------------------- */
 .topbar{
   position:sticky;
   top:0;
@@ -82,7 +84,7 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
   border:1px solid var(--line);
 }
 
-/* CTA */
+/* CTA button */
 .btn{
   display:inline-block;
   padding:9px 12px;
@@ -97,6 +99,8 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .btn:hover{background:var(--cta2)}
 .btn:focus{outline:2px solid var(--cta2); outline-offset:2px}
+
+/* Keep CTA white in nav */
 .nav a.btn{
   color:#fff;
   background:var(--cta);
@@ -104,7 +108,9 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .nav a.btn:hover{background:var(--cta2)}
 
-/* HERO */
+/* -----------------------
+   HERO
+----------------------- */
 header{
   border-bottom:1px solid var(--line);
   background:
@@ -132,7 +138,9 @@ header{
   font-size:14px;
 }
 
-/* MAIN */
+/* -----------------------
+   MAIN CONTENT
+----------------------- */
 main{
   max-width:var(--max);
   margin:0 auto;
@@ -146,7 +154,7 @@ main{
   box-shadow:var(--shadow);
 }
 
-/* Image */
+/* Service image – responsive, smaller on desktop */
 .img{
   margin-top:14px;
   border-radius:14px;
@@ -161,6 +169,8 @@ main{
   width:100%;
   height:auto;
 }
+
+/* ~50% width on desktop */
 @media (min-width: 900px){
   .img{
     max-width:50%;
@@ -178,7 +188,9 @@ p{margin:0 0 10px}
 .muted{color:var(--muted); font-size:13px}
 hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 
-/* GRID (used for states + cities) */
+/* -----------------------
+   CITY GRID
+----------------------- */
 .city-grid{
   list-style:none;
   padding:0;
@@ -204,30 +216,9 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   box-shadow:0 14px 28px rgba(17,24,39,0.08);
 }
 
-/* CALLOUT */
-.callout{
-  margin:16px 0 12px;
-  padding:14px;
-  border-radius:14px;
-  border:1px solid rgba(22,163,74,0.22);
-  background:linear-gradient(180deg, rgba(22,163,74,0.08), rgba(22,163,74,0.03));
-}
-.callout-title{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-weight:900;
-}
-.badge{
-  padding:3px 10px;
-  border-radius:999px;
-  background:rgba(22,163,74,0.14);
-  border:1px solid rgba(22,163,74,0.22);
-  font-size:12px;
-  font-weight:900;
-}
-
-/* CONTACT */
+/* -----------------------
+   CONTACT FORM
+----------------------- */
 .form-grid{
   margin-top:14px;
   display:grid;
@@ -238,28 +229,36 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 @media (max-width: 900px){
   .form-grid{grid-template-columns:1fr}
 }
+
 .embed-card{
   border:1px solid var(--line);
   border-radius:14px;
   padding:18px;
   background:var(--soft);
 }
+
 .nx-center{
   display:flex;
   justify-content:center;
 }
+
+/* Networx container sizing (mobile-first) */
 #nx_form{
   width:100%;
   max-width:520px;
   min-height:520px;
 }
+
+/* Force iframe to fill container */
 #networx_form_container iframe{
   width:100% !important;
   height:100% !important;
   border:0 !important;
 }
 
-/* WHY BOX */
+/* -----------------------
+   WHY BOX
+----------------------- */
 .why-box{
   background:#fff;
   border:1px solid var(--line);
@@ -301,7 +300,9 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   font-size:12px;
 }
 
-/* FOOTER */
+/* -----------------------
+   FOOTER
+----------------------- */
 footer{
   border-top:1px solid var(--line);
   background:#fbfbfa;
@@ -328,16 +329,20 @@ footer{
   font-size:12px;
 }
 
-/* MOBILE NAV FIX */
+/* -----------------------
+   MOBILE NAV FIX
+----------------------- */
 @media (max-width: 640px){
   .topbar-inner{
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
+
   .nav{
     justify-content: center;
   }
+
   .nav .btn{
     width: 100%;
     text-align: center;
@@ -368,7 +373,7 @@ footer{
     <h2>Cities we serve in NH</h2>
 <p class="muted">Choose your city to see local details and typical pricing ranges.</p>
 <ul class="city-grid">
-<li><a href="/manchester-nh/">Manchester, NH</a></li>
+<li><a href="/nh/manchester/">Manchester, NH</a></li>
 </ul>
 <hr />
 <p class="muted">
@@ -390,7 +395,6 @@ footer{
       <a href="/">Home</a>
       <a href="/cost/">Cost</a>
       <a href="/how-to/">How-To</a>
-      <a href="/contact/">Contact</a>
     </div>
     <div class="small">© Woodpecker Damage Repair Company. All rights reserved.</div>
   </div>
