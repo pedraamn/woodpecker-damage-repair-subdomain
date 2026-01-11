@@ -2,32 +2,21 @@
 """
 Static site generator (no JS) for a single-service, multi-city site.
 
-✅ Works locally:
+✅ Local:
   python3 generate.py
   python3 -m http.server 8000 --directory public
 
-✅ Works on Vercel as a pure static deploy:
+✅ Vercel (pure static):
   - Build command: python3 generate.py
   - Output directory: public
 
-Key design choice (to keep it working everywhere with no middleware/worker):
-- All internal links are ROOT-RELATIVE PATHS like /san-jose-ca/
-- Canonicals + sitemap <loc> can be ABSOLUTE when SITE_ORIGIN is set,
-  otherwise they fall back to paths (great for localhost).
+Subdomain mode:
+- City pages are served via host-based rewrites (vercel.json).
+- Therefore city LINKS must be absolute subdomain URLs, not /<slug>/ paths.
 
-ENV VARS (recommended on Vercel):
-  SITE_ORIGIN="https://woodpeckerdamagerepaircompany.com"
-    - Used for root pages (/cost, /how-to, /contact) canonical + sitemap.
-
-  SUBDOMAIN_BASE="woodpeckerdamagerepaircompany.com"
-    - If set, city pages will canonicalize to:
-      https://<city>-<state>.<SUBDOMAIN_BASE>/
-    - This matches your vercel.json host-based rewrites.
-
-Example:
-  export SITE_ORIGIN="https://woodpeckerdamagerepaircompany.com"
-  export SUBDOMAIN_BASE="woodpeckerdamagerepaircompany.com"
-  python3 generate.py
+ENV VARS (optional):
+  SITE_ORIGIN="https://woodpeckerdamagerepairspecialists.com"
+  SUBDOMAIN_BASE="woodpeckerdamagerepairspecialists.com"
 """
 
 from __future__ import annotations
@@ -55,7 +44,7 @@ class SiteConfig:
 
   # Brand / site identity
   base_name: str = "Woodpecker Damage Repair"
-  brand_name: str = "Woodpecker Damage Repair Company"
+  brand_name: str = "Woodpecker Damage Repair Specialists"
   cta_text: str = "Get Free Estimate"
   cta_href: str = "/contact/"
 
@@ -63,10 +52,9 @@ class SiteConfig:
   output_dir: Path = Path("public")
   image_filename: str = "picture.png"  # sits next to generate.py
 
-  # Canonical/sitemap origin for ROOT PAGES (set via env var SITE_ORIGIN)
-  # Example: https://woodpeckerdamagerepaircompany.com
-  site_origin: str = "https://woodpeckerdamagerepaircompany.com"
-  subdomain_base: str = "woodpeckerdamagerepaircompany.com"
+  # ✅ Root origin + subdomain base (overridable by env vars)
+  site_origin: str = os.getenv("SITE_ORIGIN", "https://woodpeckerdamagerepairspecialists.com")
+  subdomain_base: str = os.getenv("SUBDOMAIN_BASE", "woodpeckerdamagerepairspecialists.com")
 
   # Pricing (base range; city pages may apply multipliers)
   cost_low: int = 350
@@ -146,10 +134,11 @@ class SiteConfig:
     "Woodpecker damage repair typically costs {cost_lo} to {cost_hi}. Replacement and finish blending are what most often increase total cost. Access height and scattered damage add labor time fast. Pairing repair with deterrence reduces the odds you pay twice.",
   )
 
-  # LOCAL COST
+  # LOCAL COST (city-locked variant)
   location_cost_h2: str = "How Much Does Woodpecker Damage Repair Cost in {City, State}?"
+
   location_cost_p: str = (
-    "In <strong>{City, State}</strong>, most woodpecker damage repair projects range from {cost_lo} to {cost_hi}, "
+    "In {City, State}, most woodpecker damage repair projects range from {cost_lo} to {cost_hi}, "
     "depending on scope and access difficulty. Prices can vary based on local labor rates, property layout, and finish matching requirements. "
     "For a clearer breakdown of what affects pricing, you can {view our woodpecker damage repair cost guide}."
   )
@@ -159,7 +148,7 @@ class SiteConfig:
     "A realistic natural-light photo of a home exterior repair in progress: a real human contractor on a ladder "
     "repairing small round woodpecker holes in painted wood siding near trim on a suburban house. "
     "The worker wears safety glasses and gloves, using a putty knife and exterior-grade patch compound and a caulk gun; "
-    "tools visible, non-staged candid feel, residential yard backgroun d."
+    "tools visible, non-staged candid feel, residential yard background."
   )
 
 
@@ -251,36 +240,28 @@ def copy_site_image(*, src_dir: Path, out_dir: Path, filename: str) -> None:
   shutil.copyfile(src, out_dir / filename)
 
 
-def canonical_href(path: str) -> str:
+def root_url(path: str) -> str:
   """
-  Canonical for ROOT pages.
-  If SITE_ORIGIN is set, returns absolute URL; otherwise returns a path.
+  Absolute URL for root-site pages (/, /cost/, /how-to/, /contact/).
   """
   path = "/" + path.lstrip("/")
-  if CONFIG.site_origin:
-    return CONFIG.site_origin.rstrip("/") + path
-  return path
+  return CONFIG.site_origin.rstrip("/") + path
 
 
-def city_canonical(city: str, state: str) -> str:
+def city_url(city: str, state: str) -> str:
   """
-  Canonical for CITY pages in subdomain mode.
-
-  If SUBDOMAIN_BASE is set:
-    https://<slug>.<base>/
-  else:
-    fall back to root-based canonical_href("/<slug>/")
+  Absolute URL for a city subdomain homepage:
+  https://<slug>.<SUBDOMAIN_BASE>/
   """
   slug = city_state_slug(city, state)
-  if CONFIG.subdomain_base:
-    return f"https://{slug}.{CONFIG.subdomain_base.strip().lstrip('.')}/"
-  return canonical_href(f"/{slug}/")
+  base = CONFIG.subdomain_base.strip().lstrip(".")
+  return f"https://{slug}.{base}/"
 
 
 # -----------------------
-# THEME (pure CSS, minimal, fast)
+# THEME
 # -----------------------
-
+# You said you can skip the CSS — paste your full CSS string here if you want.
 CSS = """
 :root{
   --bg:#fafaf9;
@@ -493,7 +474,32 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 }
 
 /* -----------------------
-   CONTACT FORM
+   CALLOUT
+----------------------- */
+.callout{
+  margin:16px 0 12px;
+  padding:14px;
+  border-radius:14px;
+  border:1px solid rgba(22,163,74,0.22);
+  background:linear-gradient(180deg, rgba(22,163,74,0.08), rgba(22,163,74,0.03));
+}
+.callout-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:900;
+}
+.badge{
+  padding:3px 10px;
+  border-radius:999px;
+  background:rgba(22,163,74,0.14);
+  border:1px solid rgba(22,163,74,0.22);
+  font-size:12px;
+  font-weight:900;
+}
+
+/* -----------------------
+   CONTACT FORM (UPDATED)
 ----------------------- */
 .form-grid{
   margin-top:14px;
@@ -515,7 +521,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 
 .nx-center{
   display:flex;
-  justify-content:center;
+  justify-content:center; /* mobile centered */
 }
 
 /* Networx container sizing (mobile-first) */
@@ -531,6 +537,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   height:100% !important;
   border:0 !important;
 }
+
 
 /* -----------------------
    WHY BOX
@@ -606,7 +613,7 @@ footer{
 }
 
 /* -----------------------
-   MOBILE NAV FIX
+   MOBILE NAV FIX (KEY PART)
 ----------------------- */
 @media (max-width: 640px){
   .topbar-inner{
@@ -625,11 +632,6 @@ footer{
   }
 }
 """.strip()
-
-
-# IMPORTANT:
-# Keep your exact CSS. I’m not editing it here to save space in this message.
-# Replace the line above with your full CSS block exactly as-is.
 
 
 # -----------------------
@@ -741,7 +743,7 @@ def page_shell(*, h1: str, sub: str, inner_html: str, show_image: bool = True, s
 # -----------------------
 def linkify_curly(text: str) -> str:
   """
-  Replace {word} with a link to the homepage using that word as link text.
+  Replace {word} with a link to the ROOT homepage (apex), not the current subdomain.
   """
   parts: list[str] = []
   last = 0
@@ -750,7 +752,7 @@ def linkify_curly(text: str) -> str:
     parts.append(esc(text[last:m.start()]))
 
     word = m.group(1)
-    parts.append(f'<a href="/">{esc(word)}</a>')
+    parts.append(f'<a href="{esc(root_url("/"))}">{esc(word)}</a>')
 
     last = m.end()
 
@@ -772,7 +774,6 @@ def location_cost_section(city: str, state: str, col: float) -> str:
 
   h2 = CONFIG.location_cost_h2.replace("{City, State}", f"{city}, {state}")
 
-  # This is HTML content; do NOT esc() the whole thing
   p = (
     CONFIG.location_cost_p
     .replace("{City, State}", f"{city}, {state}")
@@ -780,6 +781,7 @@ def location_cost_section(city: str, state: str, col: float) -> str:
     .replace("{cost_hi}", cost_hi)
   )
 
+  # p is HTML-ish; we do NOT esc() the whole string. linkify_curly escapes non-tag text safely.
   return f"<h2>{esc(h2)}</h2>\n<p>{linkify_curly(p)}</p>"
 
 
@@ -798,8 +800,9 @@ def make_page(*, h1: str, canonical_url: str, nav_key: str, sub: str, inner: str
 
 
 def homepage_html() -> str:
+  # ✅ IMPORTANT: city links must be absolute subdomain URLs
   city_links = "\n".join(
-    f'<li><a href="{esc("/" + city_state_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
+    f'<li><a href="{esc(city_url(city, state))}">{esc(city)}, {esc(state)}</a></li>'
     for city, state, _ in CITIES
   )
 
@@ -823,7 +826,7 @@ def homepage_html() -> str:
 
   return make_page(
     h1=CONFIG.h1_title,
-    canonical_url=canonical_href("/"),
+    canonical_url=root_url("/"),
     nav_key="home",
     sub=CONFIG.h1_sub,
     inner=inner,
@@ -874,7 +877,7 @@ def contact_page_html() -> str:
 
   return make_page(
     h1=h1,
-    canonical_url=canonical_href("/contact/"),
+    canonical_url=root_url("/contact/"),
     nav_key="contact",
     sub=sub,
     inner=inner,
@@ -889,10 +892,10 @@ def city_page_html(city: str, state: str, col: float) -> str:
     + make_section(headings=list(CONFIG.main_h2), paras=list(CONFIG.main_p))
   )
 
-  # SUBDOMAIN MODE: canonical should be the subdomain root, not /<slug>/
+  # ✅ Canonical should be the subdomain root
   return make_page(
     h1=city_title(city, state),
-    canonical_url=city_canonical(city, state),
+    canonical_url=city_url(city, state),
     nav_key="home",
     sub=CONFIG.h1_sub,
     inner=inner,
@@ -902,7 +905,7 @@ def city_page_html(city: str, state: str, col: float) -> str:
 def cost_page_html() -> str:
   return make_page(
     h1=CONFIG.cost_title,
-    canonical_url=canonical_href("/cost/"),
+    canonical_url=root_url("/cost/"),
     nav_key="cost",
     sub=CONFIG.cost_sub,
     inner=make_section(headings=list(CONFIG.cost_h2), paras=list(CONFIG.cost_p)),
@@ -912,7 +915,7 @@ def cost_page_html() -> str:
 def howto_page_html() -> str:
   return make_page(
     h1=CONFIG.howto_title,
-    canonical_url=canonical_href("/how-to/"),
+    canonical_url=root_url("/how-to/"),
     nav_key="howto",
     sub=CONFIG.howto_sub,
     inner=make_section(headings=list(CONFIG.howto_h2), paras=list(CONFIG.howto_p)),
@@ -958,41 +961,39 @@ def main() -> None:
 
   reset_output_dir(out)
 
-  # Copy shared image into /public/
+  # Shared image into /public/
   copy_site_image(src_dir=script_dir, out_dir=out, filename=CONFIG.image_filename)
 
-  # Core pages
+  # Core pages (root domain)
   write_text(out / "index.html", homepage_html())
   write_text(out / "cost" / "index.html", cost_page_html())
   write_text(out / "how-to" / "index.html", howto_page_html())
   write_text(out / "contact" / "index.html", contact_page_html())
 
-  # City pages (folders: /<city>-<state>/index.html)
+  # City pages: still generated as /<slug>/index.html
+  # (Vercel host-rewrite should route subdomain -> /<slug>/ behind the scenes.)
   for city, state, col in CITIES:
     write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
 
   # Sitemap:
-  # - Root pages use SITE_ORIGIN if set
-  # - City pages use subdomain canonicals if SUBDOMAIN_BASE is set
+  # - root pages absolute on apex
+  # - city pages absolute subdomains
   urls: list[str] = [
-    canonical_href("/"),
-    canonical_href("/cost/"),
-    canonical_href("/how-to/"),
-    canonical_href("/contact/"),
+    root_url("/"),
+    root_url("/cost/"),
+    root_url("/how-to/"),
+    root_url("/contact/"),
   ]
-  urls += [city_canonical(c, s) for c, s, _ in CITIES]
+  urls += [city_url(c, s) for c, s, _ in CITIES]
 
   write_text(out / "robots.txt", robots_txt())
   write_text(out / "sitemap.xml", sitemap_xml(urls))
   write_text(script_dir / "wrangler.jsonc", wrangler_content())
 
   print(f"✅ Generated site into: {out.resolve()}")
-  if CONFIG.site_origin:
-    print(f"✅ SITE_ORIGIN={CONFIG.site_origin}")
-  if CONFIG.subdomain_base:
-    print(f"✅ SUBDOMAIN_BASE={CONFIG.subdomain_base}")
+  print(f"✅ SITE_ORIGIN={CONFIG.site_origin}")
+  print(f"✅ SUBDOMAIN_BASE={CONFIG.subdomain_base}")
 
 
 if __name__ == "__main__":
   main()
-
