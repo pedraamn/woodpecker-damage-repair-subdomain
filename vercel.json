@@ -1,0 +1,15 @@
+{
+    "rewrites": [
+      {
+        "source": "/",
+        "has": [
+          {
+            "type": "host",
+            "value": "(?<city>[a-z0-9-]+)\\.woodpeckerdamagerepaircompany\\.com"
+          }
+        ],
+        "destination": "/:city/"
+      }
+    ]
+  }
+  

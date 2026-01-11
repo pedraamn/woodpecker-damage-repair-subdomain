@@ -59,7 +59,7 @@ class SiteConfig:
 
   # Optional canonical/sitemap origin (set via env var SITE_ORIGIN)
   # Example: https://woodpecker-damage-repair-subdomain.vercel.app
-  site_origin: str | None = os.environ.get("SITE_ORIGIN")
+  site_origin: str = "https://woodpeckerdamagerepaircompany.com"
 
   # Pricing (base range; city pages may apply multipliers)
   cost_low: int = 350
