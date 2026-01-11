@@ -1,20 +1,34 @@
 #!/usr/bin/env python3
+"""
+Static site generator (no JS) for a single-service, multi-city site.
+
+NEW IA (2-level):
+- /                 -> lists STATES
+- /<state>/         -> lists CITIES in that state
+- /<city>-<state>/  -> city page (same as before)
+- /cost/
+- /how-to/
+- /contact/
+
+Cloudflare Pages:
+- Build command: (empty)
+- Output directory: public
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from datetime import date
 import csv
 import html
 import re
 import shutil
 
 
-
-from dataclasses import dataclass
-from pathlib import Path
-from datetime import date
-
+# -----------------------
+# CONFIG
+# -----------------------
 @dataclass(frozen=True)
 class SiteConfig:
   # Data
@@ -23,8 +37,7 @@ class SiteConfig:
   def load_cities(self):
     return load_cities_from_csv(self.cities_csv)
 
-  from pathlib import Path
-
+  # Brand / site identity
   base_name: str = "Woodpecker Damage Repair"
   brand_name: str = "Woodpecker Damage Repair Company"
   cta_text: str = "Get Free Estimate"
@@ -62,7 +75,7 @@ class SiteConfig:
 
   main_p: list[str] = (
     "Woodpecker damage repair is the process of sealing and restoring holes in siding, trim, fascia, or soffits so the exterior is weather-tight again. The goal isn’t just to fill a hole—it’s to stabilize the surrounding material and restore a finish that won’t fail in the next storm.",
-    "Woodpeckers usually peck homaes to search for insects, create a nesting cavity, or drum to mark territory. The reason matters because repairs last longer when you reduce what attracted the bird in the first place, instead of only patching the visible holes.",
+    "Woodpeckers usually peck homes to search for insects, create a nesting cavity, or drum to mark territory. The reason matters because repairs last longer when you reduce what attracted the bird in the first place, instead of only patching the visible holes.",
     "Woodpecker holes often appear as clean round openings, clusters of small probing holes, or larger cavities where the bird returned repeatedly. The pattern helps identify whether the issue is light probing or more serious nesting damage that may require replacement instead of patching.",
     "Yes, woodpecker damage can be serious because even small holes can let water and pests into the wall system. Over time, repeated wetting can cause paint failure, swelling, rot, and bigger repairs than the original hole.",
     "Woodpecker activity doesn’t automatically mean termites, but it can signal insects in or around the wood. If you’re seeing soft wood, frass, or repeated pecking in one area, treat it as a ‘possible pest + repair’ situation so you don’t seal in a hidden problem.",
@@ -70,7 +83,7 @@ class SiteConfig:
     "Hire a professional when damage is spread across multiple areas, the wood is soft or deteriorated, repairs require ladder work, or finish matching matters. Professional {woodpecker damage repair services} typically include proper sealing, material stabilization, and finish blending so the repair holds up and looks consistent.",
   )
 
-  # HOW-TO PAGE (ordered, process-first; general guide vs step-by-step tutorial)
+  # HOW-TO PAGE
   howto_h2: list[str] = (
     "Quick Answer: How Does Woodpecker Damage Repair Usually Work?",
     "How Professionals Identify the Extent of Woodpecker Damage",
@@ -89,7 +102,7 @@ class SiteConfig:
     "DIY repairs commonly fail when the underlying wood is soft, the repair isn’t fully sealed, or finish bonding is poor on weathered surfaces. If you want a realistic sense of pricing when repairs involve replacement and finish blending, you can {view our woodpecker damage repair cost guide}.",
   )
 
-  # COST PAGE (your cost-guide vibe; no walkthroughs)
+  # COST PAGE
   cost_h2: list[str] = (
     "Quick Answer",
     "Direct Answer: How Much Does Woodpecker Damage Repair Cost?",
@@ -114,7 +127,6 @@ class SiteConfig:
 
   # LOCAL COST (city-locked variant)
   location_cost_h2: str = "How Much Does Woodpecker Damage Repair Cost in {City, State}?"
-
   location_cost_p: str = (
     "In {City, State}, most woodpecker damage repair projects range from {cost_lo} to {cost_hi}, "
     "depending on scope and access difficulty. Prices can vary based on local labor rates, property layout, and finish matching requirements. "
@@ -130,12 +142,10 @@ class SiteConfig:
   )
 
 
-
-
-
 CONFIG = SiteConfig()
 
 CityWithCol = tuple[str, str, float]
+
 
 def load_cities_from_csv(path: Path) -> tuple[CityWithCol, ...]:
   cities: list[CityWithCol] = []
@@ -146,8 +156,8 @@ def load_cities_from_csv(path: Path) -> tuple[CityWithCol, ...]:
     required_fields = {"city", "state", "col"}
     if not reader.fieldnames or not required_fields.issubset(reader.fieldnames):
       raise ValueError(
-          "CSV must have headers: city,state,col "
-          f"(found: {reader.fieldnames})"
+        "CSV must have headers: city,state,col "
+        f"(found: {reader.fieldnames})"
       )
 
     for i, row in enumerate(reader, start=2):  # header is line 1
@@ -161,98 +171,83 @@ def load_cities_from_csv(path: Path) -> tuple[CityWithCol, ...]:
       try:
         col = float(col_raw)
       except ValueError as e:
-        raise ValueError(
-            f"Invalid col value at CSV line {i}: {col_raw!r}"
-        ) from e
+        raise ValueError(f"Invalid col value at CSV line {i}: {col_raw!r}") from e
 
       cities.append((city, state, col))
 
   return tuple(cities)
 
+
 CITIES: tuple[CityWithCol, ...] = CONFIG.load_cities()
-
-
-
-"""
-ALSO_MENTIONED = [
-    "pest control",
-    "spray",
-    "spray bottle",
-    "dish soap",
-    "wasp stings",
-    "price",
-    "removal",
-    "nest",
-    "wasp",
-]
-"""
 
 
 # -----------------------
 # HELPERS
 # -----------------------
 def esc(s: str) -> str:
-    return html.escape(s, quote=True)
+  return html.escape(s, quote=True)
 
 
 def slugify(s: str) -> str:
-    s = s.strip().lower()
-    s = re.sub(r"&", " and ", s)
-    s = re.sub(r"[^a-z0-9]+", "-", s)
-    s = re.sub(r"-{2,}", "-", s).strip("-")
-    return s
+  s = s.strip().lower()
+  s = re.sub(r"&", " and ", s)
+  s = re.sub(r"[^a-z0-9]+", "-", s)
+  s = re.sub(r"-{2,}", "-", s).strip("-")
+  return s
 
 
 def city_state_slug(city: str, state: str) -> str:
-    return f"{slugify(city)}-{slugify(state)}"
+  return f"{slugify(city)}-{slugify(state)}"
 
-def state_city_slug(city: str, state: str) -> str:
-  return f"{slugify(state)}/{slugify(city)}"
 
-def state_title(state: str) -> str:
-    return clamp_title(f"{CONFIG.h1_short} in {state}", 70)
-
-def cities_by_state(cities: tuple[CityWithCol, ...]) -> dict[str, list[CityWithCol]]:
-    m: dict[str, list[CityWithCol]] = {}
-    for city, state, col in cities:
-        m.setdefault(state, []).append((city, state, col))
-    # optional: sort cities alphabetically inside each state
-    for st in m:
-        m[st].sort(key=lambda t: t[0].lower())
-    return m
+def state_slug(state: str) -> str:
+  # state is like "CA"
+  return slugify(state)
 
 
 def clamp_title(title: str, max_chars: int = 70) -> str:
-    if len(title) <= max_chars:
-        return title
-    return title[: max_chars - 1].rstrip() + "…"
+  if len(title) <= max_chars:
+    return title
+  return title[: max_chars - 1].rstrip() + "…"
 
 
 def city_title(city: str, state: str) -> str:
-    return clamp_title(f"{CONFIG.h1_short} in {city}, {state}", 70)
+  return clamp_title(f"{CONFIG.h1_short} in {city}, {state}", 70)
+
+
+def state_title(state: str) -> str:
+  return clamp_title(f"{CONFIG.h1_short} in {state}", 70)
+
+
+def cities_by_state(cities: tuple[CityWithCol, ...]) -> dict[str, list[CityWithCol]]:
+  m: dict[str, list[CityWithCol]] = {}
+  for city, state, col in cities:
+    m.setdefault(state, []).append((city, state, col))
+  for st in m:
+    m[st].sort(key=lambda t: t[0].lower())
+  return m
 
 
 def write_text(out_path: Path, content: str) -> None:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(content, encoding="utf-8")
+  out_path.parent.mkdir(parents=True, exist_ok=True)
+  out_path.write_text(content, encoding="utf-8")
 
 
 def reset_output_dir(p: Path) -> None:
-    if p.exists():
-        shutil.rmtree(p)
-    p.mkdir(parents=True, exist_ok=True)
+  if p.exists():
+    shutil.rmtree(p)
+  p.mkdir(parents=True, exist_ok=True)
 
 
 def copy_site_image(*, src_dir: Path, out_dir: Path, filename: str) -> None:
-    src = src_dir / filename
-    if not src.exists():
-        raise FileNotFoundError(f"Missing image next to generate.py: {src}")
-    shutil.copyfile(src, out_dir / filename)
+  src = src_dir / filename
+  if not src.exists():
+    raise FileNotFoundError(f"Missing image next to generate.py: {src}")
+  shutil.copyfile(src, out_dir / filename)
 
 
 # -----------------------
 # THEME (pure CSS, minimal, fast)
-# Home-services vibe: warmer neutrals + trustworthy green CTA.
 # -----------------------
 CSS = """
 :root{
@@ -283,9 +278,7 @@ body{
 a{color:inherit}
 a:focus{outline:2px solid var(--cta); outline-offset:2px}
 
-/* -----------------------
-   TOP NAV
------------------------ */
+/* TOP NAV */
 .topbar{
   position:sticky;
   top:0;
@@ -333,7 +326,7 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
   border:1px solid var(--line);
 }
 
-/* CTA button */
+/* CTA */
 .btn{
   display:inline-block;
   padding:9px 12px;
@@ -348,8 +341,6 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .btn:hover{background:var(--cta2)}
 .btn:focus{outline:2px solid var(--cta2); outline-offset:2px}
-
-/* Keep CTA white in nav */
 .nav a.btn{
   color:#fff;
   background:var(--cta);
@@ -357,9 +348,7 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .nav a.btn:hover{background:var(--cta2)}
 
-/* -----------------------
-   HERO
------------------------ */
+/* HERO */
 header{
   border-bottom:1px solid var(--line);
   background:
@@ -387,9 +376,7 @@ header{
   font-size:14px;
 }
 
-/* -----------------------
-   MAIN CONTENT
------------------------ */
+/* MAIN */
 main{
   max-width:var(--max);
   margin:0 auto;
@@ -403,7 +390,7 @@ main{
   box-shadow:var(--shadow);
 }
 
-/* Service image – responsive, smaller on desktop */
+/* Image */
 .img{
   margin-top:14px;
   border-radius:14px;
@@ -418,8 +405,6 @@ main{
   width:100%;
   height:auto;
 }
-
-/* ~50% width on desktop */
 @media (min-width: 900px){
   .img{
     max-width:50%;
@@ -437,9 +422,7 @@ p{margin:0 0 10px}
 .muted{color:var(--muted); font-size:13px}
 hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 
-/* -----------------------
-   CITY GRID
------------------------ */
+/* GRID (used for states + cities) */
 .city-grid{
   list-style:none;
   padding:0;
@@ -465,9 +448,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   box-shadow:0 14px 28px rgba(17,24,39,0.08);
 }
 
-/* -----------------------
-   CALLOUT
------------------------ */
+/* CALLOUT */
 .callout{
   margin:16px 0 12px;
   padding:14px;
@@ -490,9 +471,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   font-weight:900;
 }
 
-/* -----------------------
-   CONTACT FORM (UPDATED)
------------------------ */
+/* CONTACT */
 .form-grid{
   margin-top:14px;
   display:grid;
@@ -503,37 +482,28 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 @media (max-width: 900px){
   .form-grid{grid-template-columns:1fr}
 }
-
 .embed-card{
   border:1px solid var(--line);
   border-radius:14px;
   padding:18px;
   background:var(--soft);
 }
-
 .nx-center{
   display:flex;
-  justify-content:center; /* mobile centered */
+  justify-content:center;
 }
-
-/* Networx container sizing (mobile-first) */
 #nx_form{
   width:100%;
   max-width:520px;
   min-height:520px;
 }
-
-/* Force iframe to fill container */
 #networx_form_container iframe{
   width:100% !important;
   height:100% !important;
   border:0 !important;
 }
 
-
-/* -----------------------
-   WHY BOX
------------------------ */
+/* WHY BOX */
 .why-box{
   background:#fff;
   border:1px solid var(--line);
@@ -575,9 +545,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   font-size:12px;
 }
 
-/* -----------------------
-   FOOTER
------------------------ */
+/* FOOTER */
 footer{
   border-top:1px solid var(--line);
   background:#fbfbfa;
@@ -604,20 +572,16 @@ footer{
   font-size:12px;
 }
 
-/* -----------------------
-   MOBILE NAV FIX (KEY PART)
------------------------ */
+/* MOBILE NAV FIX */
 @media (max-width: 640px){
   .topbar-inner{
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
-
   .nav{
     justify-content: center;
   }
-
   .nav .btn{
     width: 100%;
     text-align: center;
@@ -626,29 +590,26 @@ footer{
 """.strip()
 
 
-
-
 # -----------------------
 # HTML BUILDING BLOCKS
 # -----------------------
 def nav_html(current: str) -> str:
-    def item(href: str, label: str, key: str) -> str:
-        cur = ' aria-current="page"' if current == key else ""
-        return f'<a href="{esc(href)}"{cur}>{esc(label)}</a>'
+  def item(href: str, label: str, key: str) -> str:
+    cur = ' aria-current="page"' if current == key else ""
+    return f'<a href="{esc(href)}"{cur}>{esc(label)}</a>'
 
-    return (
-        '<nav class="nav" aria-label="Primary navigation">'
-        + item("/", "Home", "home")
-        + item("/cost/", "Cost", "cost")
-        + item("/how-to/", "How-To", "howto")
-        + f'<a class="btn" href="{esc(CONFIG.cta_href)}">{esc(CONFIG.cta_text)}</a>'
-        + "</nav>"
-    )
+  return (
+    '<nav class="nav" aria-label="Primary navigation">'
+    + item("/", "Home", "home")
+    + item("/cost/", "Cost", "cost")
+    + item("/how-to/", "How-To", "howto")
+    + f'<a class="btn" href="{esc(CONFIG.cta_href)}">{esc(CONFIG.cta_text)}</a>'
+    + "</nav>"
+  )
 
 
 def base_html(*, title: str, canonical_path: str, current_nav: str, body: str) -> str:
-    # title == h1 is enforced by callers; keep this thin.
-    return f"""<!doctype html>
+  return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -673,18 +634,8 @@ def base_html(*, title: str, canonical_path: str, current_nav: str, body: str) -
 
 
 def header_block(*, h1: str, sub: str) -> str:
-    return f"""
+  return f"""
 <header>
-  <div class="hero">
-    <h1>{esc(h1)}</h1>
-    <p class="sub">{esc(sub)}</p>
-  </div>
-</header>
-""".rstrip()
-
-def contact_header_block(*, h1: str, sub: str) -> str:
-    return f"""
-<header class="contact-hero">
   <div class="hero">
     <h1>{esc(h1)}</h1>
     <p class="sub">{esc(sub)}</p>
@@ -694,9 +645,9 @@ def contact_header_block(*, h1: str, sub: str) -> str:
 
 
 def footer_block(*, show_cta: bool = True) -> str:
-    cta_html = ""
-    if show_cta:
-        cta_html = f"""
+  cta_html = ""
+  if show_cta:
+    cta_html = f"""
     <h2>Next steps</h2>
     <p class="sub">Ready to move forward? Request a free quote.</p>
     <div>
@@ -704,7 +655,7 @@ def footer_block(*, show_cta: bool = True) -> str:
     </div>
 """
 
-    return f"""
+  return f"""
 <footer>
   <div class="footer-inner">
     {cta_html}
@@ -712,6 +663,7 @@ def footer_block(*, show_cta: bool = True) -> str:
       <a href="/">Home</a>
       <a href="/cost/">Cost</a>
       <a href="/how-to/">How-To</a>
+      <a href="/contact/">Contact</a>
     </div>
     <div class="small">© {esc(CONFIG.brand_name)}. All rights reserved.</div>
   </div>
@@ -719,20 +671,19 @@ def footer_block(*, show_cta: bool = True) -> str:
 """.rstrip()
 
 
-
 def page_shell(*, h1: str, sub: str, inner_html: str, show_image: bool = True, show_footer_cta: bool = True) -> str:
-    img_src = f"/{CONFIG.image_filename}"
-    img_html = ""
-    if show_image:
-        img_html = f"""
+  img_src = f"/{CONFIG.image_filename}"
+  img_html = ""
+  if show_image:
+    img_html = f"""
     <div class="img">
       <img src="{esc(img_src)}" alt="Service image" loading="lazy" />
     </div>
 """.rstrip()
 
-    return (
-        header_block(h1=h1, sub=sub)
-        + f"""
+  return (
+    header_block(h1=h1, sub=sub)
+    + f"""
 <main>
   <section class="card">
 {img_html}
@@ -740,162 +691,113 @@ def page_shell(*, h1: str, sub: str, inner_html: str, show_image: bool = True, s
   </section>
 </main>
 """
-        + footer_block(show_cta=show_footer_cta)
-    ).rstrip()
-
+    + footer_block(show_cta=show_footer_cta)
+  ).rstrip()
 
 
 # -----------------------
 # CONTENT SECTIONS
 # -----------------------
-
 def linkify_curly(text: str) -> str:
-  """
-  Replace {word} with a link to the homepage using that word as link text
-  """
   parts = []
   last = 0
 
   for m in re.finditer(r"\{([^}]+)\}", text):
-    # text before the match
     parts.append(esc(text[last:m.start()]))
-
     word = m.group(1)
     parts.append(f'<a href="/">{esc(word)}</a>')
-
     last = m.end()
 
-  # remaining text
   parts.append(esc(text[last:]))
-
   return "".join(parts)
 
-def make_section(*, headings: list[str], paras:  list[str]) -> str:
+
+def make_section(*, headings: list[str], paras: list[str]) -> str:
   parts = []
   for h2, p in zip(headings, paras):
     parts.append(f"<h2>{esc(h2)}</h2>")
     parts.append(f"<p>{linkify_curly(p)}</p>")
   return "\n".join(parts)
 
+
 def location_cost_section(city: str, state: str, col: float) -> str:
-    cost_lo = f"<strong>${int(CONFIG.cost_low * col)}</strong>"
-    cost_hi = f"<strong>${int(CONFIG.cost_high * col)}</strong>"
+  cost_lo = f"<strong>${int(CONFIG.cost_low * col)}</strong>"
+  cost_hi = f"<strong>${int(CONFIG.cost_high * col)}</strong>"
 
-    h2 = CONFIG.location_cost_h2.replace(
-        "{City, State}", f"{city}, {state}"
-    )
+  h2 = CONFIG.location_cost_h2.replace("{City, State}", f"{city}, {state}")
 
-    p = (
-        CONFIG.location_cost_p
-        .replace("<strong>{City, State}", f"{city}, {state}</strong>")
-        .replace("{cost_lo}", cost_lo)
-        .replace("{cost_hi}", cost_hi)
-    )
+  # NOTE: your original had a broken replace here. Keep it simple and correct:
+  p = (
+    CONFIG.location_cost_p
+    .replace("{City, State}", f"{city}, {state}")
+    .replace("{cost_lo}", cost_lo)
+    .replace("{cost_hi}", cost_hi)
+  )
 
-    return f"<h2>{esc(h2)}</h2>\n<p>{esc(p)}</p>"
-
-
-def city_cost_callout_html(city: str, state: str) -> str:
-    # Subtle, high-impact conversion element for city pages.
-    return f"""
-<div class="callout" role="note" aria-label="Typical cost range">
-  <div class="callout-title">
-    <span class="badge">Typical range in {esc(city)}, {esc(state)}</span>
-    <span>${CONFIG.cost_low}–${CONFIG.cost_high}</span>
-  </div>
-</div>
-""".rstrip()
+  # IMPORTANT: Don't esc(p) because it contains <strong> and linkified text.
+  return f"<h2>{esc(h2)}</h2>\n<p>{linkify_curly(p)}</p>"
 
 
 # -----------------------
 # PAGE FACTORY
 # -----------------------
 def make_page(*, h1: str, canonical: str, nav_key: str, sub: str, inner: str, show_image: bool = True, show_footer_cta: bool = True) -> str:
-    h1 = clamp_title(h1, 70)
-    title = h1  # enforce title == h1
-    return base_html(
-        title=title,
-        canonical_path=canonical,
-        current_nav=nav_key,
-        body=page_shell(h1=h1, sub=sub, inner_html=inner, show_image=show_image, show_footer_cta=show_footer_cta),
-    )
+  h1 = clamp_title(h1, 70)
+  title = h1  # enforce title == h1
+  return base_html(
+    title=title,
+    canonical_path=canonical,
+    current_nav=nav_key,
+    body=page_shell(h1=h1, sub=sub, inner_html=inner, show_image=show_image, show_footer_cta=show_footer_cta),
+  )
 
 
+# -----------------------
+# PAGES
+# -----------------------
 def homepage_html() -> str:
-    city_links = "\n".join(
-        f'<li><a href="{esc("/" + city_state_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
-        for city, state, _ in CITIES
-    )
-    inner = (
-        make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
-        + """
-<hr />
-<h2>Choose your city</h2>
-<p class="muted">We provide services nationwide, including in the following cities:</p>
-<ul class="city-grid">
-"""
-        + city_links
-        + f"""
-</ul>
-<hr />
-<p class="muted">
-  Also available: <a href="/cost/">{esc(CONFIG.cost_title)}</a> and <a href="/how-to/">{esc(CONFIG.howto_title)}</a>.
-</p>
-"""
-    )
+  by_state = cities_by_state(CITIES)
+  states = sorted(by_state.keys())
 
-    return make_page(
-        h1=CONFIG.h1_title,
-        canonical="/",
-        nav_key="home",
-        sub=CONFIG.h1_sub,
-        inner=inner,
-    )
+  state_links = "\n".join(
+    f'<li><a href="{esc("/" + state_slug(st) + "/")}">{esc(st)}</a></li>'
+    for st in states
+  )
 
-def state_homepage_html() -> str:
-    by_state = cities_by_state(CITIES)
-    states = sorted(by_state.keys())
-
-    state_links = "\n".join(
-        f'<li><a href="{esc("/" + slugify(st) + "/")}">{esc(st)}</a></li>'
-        for st in states
-    )
-
-    inner = (
-        make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
-        + """
+  inner = (
+    make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
+    + """
 <hr />
 <h2>Choose your state</h2>
 <p class="muted">We provide services nationwide, including in the following states:</p>
 <ul class="city-grid">
 """
-        + state_links
-        + f"""
+    + state_links
+    + f"""
 </ul>
 <hr />
 <p class="muted">
   Also available: <a href="/cost/">{esc(CONFIG.cost_title)}</a> and <a href="/how-to/">{esc(CONFIG.howto_title)}</a>.
 </p>
 """
-    )
+  )
 
-    return make_page(
-        h1=CONFIG.h1_title,
-        canonical="/",
-        nav_key="home",
-        sub=CONFIG.h1_sub,
-        inner=inner,
-    )
+  return make_page(
+    h1=CONFIG.h1_title,
+    canonical="/",
+    nav_key="home",
+    sub=CONFIG.h1_sub,
+    inner=inner,
+  )
 
 
 def state_page_html(state: str, cities: list[CityWithCol]) -> str:
-    city_links = "\n".join(
-        f'<li><a href="{esc("/" + state_city_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
-        for city, state, _ in cities
-    )
+  city_links = "\n".join(
+    f'<li><a href="{esc("/" + city_state_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
+    for city, state, _ in cities
+  )
 
-    inner = (
-        f"""
+  inner = f"""
 <h2>Cities we serve in {esc(state)}</h2>
 <p class="muted">Choose your city to see local details and typical pricing ranges.</p>
 <ul class="city-grid">
@@ -906,48 +808,77 @@ def state_page_html(state: str, cities: list[CityWithCol]) -> str:
   Also available: <a href="/cost/">{esc(CONFIG.cost_title)}</a> and <a href="/how-to/">{esc(CONFIG.howto_title)}</a>.
 </p>
 """.strip()
-    )
 
-    return make_page(
-        h1=state_title(state),
-        canonical=f"/{slugify(state)}/",
-        nav_key="home",
-        sub=CONFIG.h1_sub,
-        inner=inner,
-    )
+  return make_page(
+    h1=state_title(state),
+    canonical=f"/{state_slug(state)}/",
+    nav_key="home",
+    sub=CONFIG.h1_sub,
+    inner=inner,
+  )
 
 
+def city_page_html(city: str, state: str, col: float) -> str:
+  inner = (
+    location_cost_section(city, state, col)
+    + make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
+  )
+
+  return make_page(
+    h1=city_title(city, state),
+    canonical=f"/{city_state_slug(city, state)}/",
+    nav_key="home",
+    sub=CONFIG.h1_sub,
+    inner=inner,
+  )
+
+
+def cost_page_html() -> str:
+  return make_page(
+    h1=CONFIG.cost_title,
+    canonical="/cost/",
+    nav_key="cost",
+    sub=CONFIG.cost_sub,
+    inner=make_section(headings=CONFIG.cost_h2, paras=CONFIG.cost_p),
+  )
+
+
+def howto_page_html() -> str:
+  return make_page(
+    h1=CONFIG.howto_title,
+    canonical="/how-to/",
+    nav_key="howto",
+    sub=CONFIG.howto_sub,
+    inner=make_section(headings=CONFIG.howto_h2, paras=CONFIG.howto_p),
+  )
 
 
 def contact_page_html() -> str:
-    # Hard-coded copy
-    h1 = "Get Your Free Estimate"
-    sub = "Fill out the form below and we'll connect you with a qualified local professional."
+  h1 = "Get Your Free Estimate"
+  sub = "Fill out the form below and we'll connect you with a qualified local professional."
 
-    why_title = "Why Choose Us?"
-    why_bullets = (
-        "Free, no-obligation estimates",
-        "Trusted, experienced professionals",
-        "Nationwide service coverage",
-        "Fast response times",
-    )
+  why_title = "Why Choose Us?"
+  why_bullets = (
+    "Free, no-obligation estimates",
+    "Trusted, experienced professionals",
+    "Nationwide service coverage",
+    "Fast response times",
+  )
 
-    why_items = "\n".join(
-        f'<li class="why-item"><span class="tick" aria-hidden="true"></span><span>{esc(t)}</span></li>'
-        for t in why_bullets
-    )
+  why_items = "\n".join(
+    f'<li class="why-item"><span class="tick" aria-hidden="true"></span><span>{esc(t)}</span></li>'
+    for t in why_bullets
+  )
 
-    # ✅ Paste your Networx embed EXACTLY here.
-    # (This is the snippet style from your screenshot.)
-    networx_embed = """
+  networx_embed = """
 <div id="networx_form_container" style="margin:0px;padding:0px;">
-    <div id = "nx_form" style = "width: 242px; height: 375px;">
-        <script type="text/javascript" src = "https://api.networx.com/iframe.php?aff_id=73601bc3bd5a961a61a973e92e29f169&aff_to_form_id=7994"></script>
-    </div>
+  <div id="nx_form" style="width: 242px; height: 375px;">
+    <script type="text/javascript" src="https://api.networx.com/iframe.php?aff_id=73601bc3bd5a961a61a973e92e29f169&aff_to_form_id=7994"></script>
+  </div>
 </div>
 """.strip()
 
-    inner = f"""
+  inner = f"""
 <div class="form-grid">
   <div class="embed-card">
     <div class="nx-center">
@@ -964,75 +895,38 @@ def contact_page_html() -> str:
 </div>
 """.strip()
 
-    # Use the same site shell, but NO image on contact (recommended)
-    return make_page(
-        h1=h1,
-        canonical="/contact/",
-        nav_key="contact",
-        sub=sub,
-        inner=inner,
-        show_image=False,
-        show_footer_cta=False
-    )
-
-
-
-def city_page_html(city: str, state: str, col: float, is_state_site: bool = False) -> str:
-    inner = (
-      location_cost_section(city, state, col)
-      + make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
-    )
-    canonical = f"/{state_city_slug(city, state)}/" if is_state_site else f"/{city_state_slug(city, state)}/"
-
-    return make_page(
-        h1=city_title(city, state),
-        canonical=canonical,
-        nav_key="home",
-        sub=CONFIG.h1_sub,
-        inner=inner,
-    )
-
-
-def cost_page_html() -> str:
-    return make_page(
-        h1=CONFIG.cost_title,
-        canonical="/cost/",
-        nav_key="cost",
-        sub=CONFIG.cost_sub,
-        inner=make_section(headings=CONFIG.cost_h2, paras=CONFIG.cost_p),
-    )
-
-
-def howto_page_html() -> str:
-    return make_page(
-        h1=CONFIG.howto_title,
-        canonical="/how-to/",
-        nav_key="howto",
-        sub=CONFIG.howto_sub,
-        inner=make_section(headings=CONFIG.howto_h2, paras=CONFIG.howto_p),
-    )
+  return make_page(
+    h1=h1,
+    canonical="/contact/",
+    nav_key="contact",
+    sub=sub,
+    inner=inner,
+    show_image=False,
+    show_footer_cta=False,
+  )
 
 
 # -----------------------
 # ROBOTS + SITEMAP + WRANGLER
 # -----------------------
 def robots_txt() -> str:
-    return "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n"
+  return "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n"
 
 
 def sitemap_xml(urls: list[str]) -> str:
-    return (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls)
-        + "</urlset>\n"
-    )
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls)
+    + "</urlset>\n"
+  )
+
 
 def wrangler_content() -> str:
-    name = CONFIG.base_name.lower().replace(" ", "-")
-    today = date.today().isoformat()
+  name = CONFIG.base_name.lower().replace(" ", "-")
+  today = date.today().isoformat()
 
-    return f"""{{
+  return f"""{{
   "name": "{name}",
   "compatibility_date": "{today}",
   "assets": {{
@@ -1051,11 +945,10 @@ def main() -> None:
 
   reset_output_dir(out)
 
-  # Copy the single shared image into /public/ so all pages can reference "/picture.png".
   copy_site_image(src_dir=script_dir, out_dir=out, filename=CONFIG.image_filename)
 
   # Core pages
-  write_text(out / "index.html", state_homepage_html())
+  write_text(out / "index.html", homepage_html())
   write_text(out / "cost" / "index.html", cost_page_html())
   write_text(out / "how-to" / "index.html", howto_page_html())
   write_text(out / "contact" / "index.html", contact_page_html())
@@ -1064,30 +957,21 @@ def main() -> None:
   by_state = cities_by_state(CITIES)
 
   for st, city_list in by_state.items():
-      # state index page: /{state}/
-      write_text(out / slugify(st) / "index.html", state_page_html(st, city_list))
-
-      # city pages: /{city-state}/
-      for city, state, col in city_list:
-          write_text(out / state_city_slug(city, state) / "index.html", city_page_html(city, state, col, is_state_site=True))
-
-
-  """
-  # City pages
-  for city, state, col in CITIES:
+    write_text(out / state_slug(st) / "index.html", state_page_html(st, city_list))
+    for city, state, col in city_list:
       write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
-  """
 
   # robots + sitemap + wrangler
-  #city_urls = [f"/{city_state_slug(c, s)}/" for c, s, _ in CITIES]
-  city_urls = [f"/{state_city_slug(c, s)}/" for c, s, _ in CITIES]
-  urls = ["/", "/cost/", "/how-to/"] + city_urls
+  urls = ["/", "/cost/", "/how-to/", "/contact/"]
+  urls += [f"/{state_slug(st)}/" for st in sorted(by_state.keys())]
+  urls += [f"/{city_state_slug(c, s)}/" for c, s, _ in CITIES]
+
   write_text(out / "robots.txt", robots_txt())
   write_text(out / "sitemap.xml", sitemap_xml(urls))
   write_text(script_dir / "wrangler.jsonc", wrangler_content())
 
-  print(f"✅ Generated {len(urls)} pages into: {out.resolve()}")
+  print(f"✅ Generated {len(urls)} URLs into: {out.resolve()}")
 
 
 if __name__ == "__main__":
-    main()
+  main()

@@ -34,9 +34,7 @@ body{
 a{color:inherit}
 a:focus{outline:2px solid var(--cta); outline-offset:2px}
 
-/* -----------------------
-   TOP NAV
------------------------ */
+/* TOP NAV */
 .topbar{
   position:sticky;
   top:0;
@@ -84,7 +82,7 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
   border:1px solid var(--line);
 }
 
-/* CTA button */
+/* CTA */
 .btn{
   display:inline-block;
   padding:9px 12px;
@@ -99,8 +97,6 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .btn:hover{background:var(--cta2)}
 .btn:focus{outline:2px solid var(--cta2); outline-offset:2px}
-
-/* Keep CTA white in nav */
 .nav a.btn{
   color:#fff;
   background:var(--cta);
@@ -108,9 +104,7 @@ a:focus{outline:2px solid var(--cta); outline-offset:2px}
 }
 .nav a.btn:hover{background:var(--cta2)}
 
-/* -----------------------
-   HERO
------------------------ */
+/* HERO */
 header{
   border-bottom:1px solid var(--line);
   background:
@@ -138,9 +132,7 @@ header{
   font-size:14px;
 }
 
-/* -----------------------
-   MAIN CONTENT
------------------------ */
+/* MAIN */
 main{
   max-width:var(--max);
   margin:0 auto;
@@ -154,7 +146,7 @@ main{
   box-shadow:var(--shadow);
 }
 
-/* Service image – responsive, smaller on desktop */
+/* Image */
 .img{
   margin-top:14px;
   border-radius:14px;
@@ -169,8 +161,6 @@ main{
   width:100%;
   height:auto;
 }
-
-/* ~50% width on desktop */
 @media (min-width: 900px){
   .img{
     max-width:50%;
@@ -188,9 +178,7 @@ p{margin:0 0 10px}
 .muted{color:var(--muted); font-size:13px}
 hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 
-/* -----------------------
-   CITY GRID
------------------------ */
+/* GRID (used for states + cities) */
 .city-grid{
   list-style:none;
   padding:0;
@@ -216,9 +204,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   box-shadow:0 14px 28px rgba(17,24,39,0.08);
 }
 
-/* -----------------------
-   CALLOUT
------------------------ */
+/* CALLOUT */
 .callout{
   margin:16px 0 12px;
   padding:14px;
@@ -241,9 +227,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   font-weight:900;
 }
 
-/* -----------------------
-   CONTACT FORM (UPDATED)
------------------------ */
+/* CONTACT */
 .form-grid{
   margin-top:14px;
   display:grid;
@@ -254,37 +238,28 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 @media (max-width: 900px){
   .form-grid{grid-template-columns:1fr}
 }
-
 .embed-card{
   border:1px solid var(--line);
   border-radius:14px;
   padding:18px;
   background:var(--soft);
 }
-
 .nx-center{
   display:flex;
-  justify-content:center; /* mobile centered */
+  justify-content:center;
 }
-
-/* Networx container sizing (mobile-first) */
 #nx_form{
   width:100%;
   max-width:520px;
   min-height:520px;
 }
-
-/* Force iframe to fill container */
 #networx_form_container iframe{
   width:100% !important;
   height:100% !important;
   border:0 !important;
 }
 
-
-/* -----------------------
-   WHY BOX
------------------------ */
+/* WHY BOX */
 .why-box{
   background:#fff;
   border:1px solid var(--line);
@@ -326,9 +301,7 @@ hr{border:0; border-top:1px solid var(--line); margin:18px 0}
   font-size:12px;
 }
 
-/* -----------------------
-   FOOTER
------------------------ */
+/* FOOTER */
 footer{
   border-top:1px solid var(--line);
   background:#fbfbfa;
@@ -355,20 +328,16 @@ footer{
   font-size:12px;
 }
 
-/* -----------------------
-   MOBILE NAV FIX (KEY PART)
------------------------ */
+/* MOBILE NAV FIX */
 @media (max-width: 640px){
   .topbar-inner{
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
-
   .nav{
     justify-content: center;
   }
-
   .nav .btn{
     width: 100%;
     text-align: center;
@@ -399,16 +368,16 @@ footer{
     <h2>Cities we serve in MO</h2>
 <p class="muted">Choose your city to see local details and typical pricing ranges.</p>
 <ul class="city-grid">
-<li><a href="/mo/cape-girardeau/">Cape Girardeau, MO</a></li>
-<li><a href="/mo/columbia/">Columbia, MO</a></li>
-<li><a href="/mo/hannibal/">Hannibal, MO</a></li>
-<li><a href="/mo/jefferson-city/">Jefferson City, MO</a></li>
-<li><a href="/mo/joplin/">Joplin, MO</a></li>
-<li><a href="/mo/kansas-city/">Kansas City, MO</a></li>
-<li><a href="/mo/kirksville/">Kirksville, MO</a></li>
-<li><a href="/mo/springfield/">Springfield, MO</a></li>
-<li><a href="/mo/st-joseph/">St. Joseph, MO</a></li>
-<li><a href="/mo/st-louis/">St. Louis, MO</a></li>
+<li><a href="/cape-girardeau-mo/">Cape Girardeau, MO</a></li>
+<li><a href="/columbia-mo/">Columbia, MO</a></li>
+<li><a href="/hannibal-mo/">Hannibal, MO</a></li>
+<li><a href="/jefferson-city-mo/">Jefferson City, MO</a></li>
+<li><a href="/joplin-mo/">Joplin, MO</a></li>
+<li><a href="/kansas-city-mo/">Kansas City, MO</a></li>
+<li><a href="/kirksville-mo/">Kirksville, MO</a></li>
+<li><a href="/springfield-mo/">Springfield, MO</a></li>
+<li><a href="/st-joseph-mo/">St. Joseph, MO</a></li>
+<li><a href="/st-louis-mo/">St. Louis, MO</a></li>
 </ul>
 <hr />
 <p class="muted">
@@ -430,6 +399,7 @@ footer{
       <a href="/">Home</a>
       <a href="/cost/">Cost</a>
       <a href="/how-to/">How-To</a>
+      <a href="/contact/">Contact</a>
     </div>
     <div class="small">© Woodpecker Damage Repair Company. All rights reserved.</div>
   </div>
