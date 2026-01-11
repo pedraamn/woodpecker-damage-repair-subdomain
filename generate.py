@@ -785,6 +785,37 @@ def make_page(*, h1: str, canonical: str, nav_key: str, sub: str, inner: str, sh
     body=page_shell(h1=h1, sub=sub, inner_html=inner, show_image=show_image, show_footer_cta=show_footer_cta),
   )
 
+def homepage_html() -> str:
+    city_links = "\n".join(
+        f'<li><a href="{esc("/" + city_state_slug(city, state) + "/")}">{esc(city)}, {esc(state)}</a></li>'
+        for city, state, _ in CITIES
+    )
+    inner = (
+        make_section(headings=CONFIG.main_h2, paras=CONFIG.main_p)
+        + """
+<hr />
+<h2>Choose your city</h2>
+<p class="muted">We provide services nationwide, including in the following cities:</p>
+<ul class="city-grid">
+"""
+        + city_links
+        + f"""
+</ul>
+<hr />
+<p class="muted">
+  Also available: <a href="/cost/">{esc(CONFIG.cost_title)}</a> and <a href="/how-to/">{esc(CONFIG.howto_title)}</a>.
+</p>
+"""
+    )
+
+    return make_page(
+        h1=CONFIG.h1_title,
+        canonical="/",
+        nav_key="home",
+        sub=CONFIG.h1_sub,
+        inner=inner,
+    )
+
 
 def state_homepage_html() -> str:
   by_state = cities_by_state(CITIES)
@@ -980,19 +1011,20 @@ def main() -> None:
   copy_site_image(src_dir=script_dir, out_dir=out, filename=CONFIG.image_filename)
 
   # Core pages
-  write_text(out / "index.html", state_homepage_html())
+  write_text(out / "index.html", homepage_html())
   write_text(out / "cost" / "index.html", cost_page_html())
   write_text(out / "how-to" / "index.html", howto_page_html())
   write_text(out / "contact" / "index.html", contact_page_html())
 
-  # State pages + city pages (filesystem: /{state}/{city}/)
-  by_state = cities_by_state(CITIES)
+  # City pages
+  for city, state, col in CITIES:
+      write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
 
-  for st, city_list in by_state.items():
-    write_text(out / slugify(st) / "index.html", state_page_html(st, city_list))
-
-    for city, state, col in city_list:
-      write_text(out / state_city_slug(city, state) / "index.html", city_page_html(city, state, col))
+  # robots + sitemap + wrangler
+  urls = ["/", "/cost/", "/how-to/"] + [f"/{city_state_slug(c, s)}/" for c, s, _ in CITIES]
+  write_text(out / "robots.txt", robots_txt())
+  write_text(out / "sitemap.xml", sitemap_xml(urls))
+  write_text(script_dir / "wrangler.jsonc", wrangler_content())
 
   # robots + sitemap + wrangler
   # If SITE_ORIGIN is set, these become absolute URLs; otherwise they are paths (fine for local testing).
@@ -1003,12 +1035,8 @@ def main() -> None:
     canonical_href("/contact/"),
   ]
 
-  # State pages
-  for st in sorted(cities_by_state(CITIES).keys()):
-    urls.append(canonical_href(f"/{slugify(st)}/"))
-
   # City pages
-  urls += [canonical_href(f"/{state_city_slug(c, s)}/") for c, s, _ in CITIES]
+  urls += [canonical_href(f"/{city_state_slug(c, s)}/") for c, s, _ in CITIES]
 
   write_text(out / "robots.txt", robots_txt())
   write_text(out / "sitemap.xml", sitemap_xml(urls))
