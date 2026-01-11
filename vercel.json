@@ -5,10 +5,20 @@
         "has": [
           {
             "type": "host",
-            "value": "(?<city>[a-z0-9-]+)\\.woodpeckerdamagerepaircompany\\.com"
+            "value": "(?<slug>[a-z0-9-]+)\\.woodpeckerdamagerepaircompany\\.com"
           }
         ],
-        "destination": "/:city/"
+        "destination": "/:slug/"
+      },
+      {
+        "source": "/(.*)",
+        "has": [
+          {
+            "type": "host",
+            "value": "(?<slug>[a-z0-9-]+)\\.woodpeckerdamagerepaircompany\\.com"
+          }
+        ],
+        "destination": "/:slug/:1"
       }
     ]
   }
