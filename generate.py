@@ -10,7 +10,7 @@ Static site generator (no JS) for a single-service, multi-city site.
   - Build command: python3 generate.py
   - Output directory: public
 
-Subdomain mode:
+Subdomain mo de:
 - City pages are served via host-based rewrites (vercel.json).
 - Therefore city LINKS must be absolute subdomain URLs, not /<slug>/ paths.
 
