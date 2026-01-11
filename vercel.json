@@ -1,25 +1,14 @@
 {
-    "rewrites": [
-      {
-        "source": "/",
-        "has": [
-          {
-            "type": "host",
-            "value": "(?<slug>[a-z0-9-]+)\\.woodpeckerdamagerepaircompany\\.com"
-          }
-        ],
-        "destination": "/:slug/"
-      },
-      {
-        "source": "/(.*)",
-        "has": [
-          {
-            "type": "host",
-            "value": "(?<slug>[a-z0-9-]+)\\.woodpeckerdamagerepaircompany\\.com"
-          }
-        ],
-        "destination": "/:slug/:1"
-      }
-    ]
-  }
-  
+  "routes": [
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?<city>[a-z0-9-]+)\\.woodpeckerdamagerepairspecialists\\.com"
+        }
+      ],
+      "dest": "/$city/$1"
+    }
+  ]
+}
