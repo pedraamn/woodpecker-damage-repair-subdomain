@@ -961,7 +961,7 @@ def main() -> None:
     for city, state, col in city_list:
       write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
 
-  # robots + sitemap + wrangler
+  # robots + sitemap + wrangler 
   urls = ["/", "/cost/", "/how-to/", "/contact/"]
   urls += [f"/{state_slug(st)}/" for st in sorted(by_state.keys())]
   urls += [f"/{city_state_slug(c, s)}/" for c, s, _ in CITIES]
