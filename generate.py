@@ -159,7 +159,7 @@ class SiteConfig:
     "A realistic natural-light photo of a home exterior repair in progress: a real human contractor on a ladder "
     "repairing small round woodpecker holes in painted wood siding near trim on a suburban house. "
     "The worker wears safety glasses and gloves, using a putty knife and exterior-grade patch compound and a caulk gun; "
-    "tools visible, non-staged candid feel, residential yard background."
+    "tools visible, non-staged candid feel, residential yard backgroun d."
   )
 
 
