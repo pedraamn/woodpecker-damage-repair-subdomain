@@ -212,6 +212,7 @@ def city_state_slug(city: str, state: str) -> str:
   return f"{slugify(city)}-{slugify(state)}"
 
 
+
 def clamp_title(title: str, max_chars: int = 70) -> str:
   if len(title) <= max_chars:
     return title
@@ -220,6 +221,9 @@ def clamp_title(title: str, max_chars: int = 70) -> str:
 
 def city_title(city: str, state: str) -> str:
   return clamp_title(f"{CONFIG.h1_short} in {city}, {state}", 70)
+
+def city_cost_title(city: str, state: str) -> str:
+  return clamp_title(f"{CONFIG.cost_title} in {city}, {state}", 70)
 
 
 def write_text(out_path: Path, content: str) -> None:
@@ -904,6 +908,28 @@ def cost_page_html() -> str:
     inner=make_section(headings=list(CONFIG.cost_h2), paras=list(CONFIG.cost_p)),
   )
 
+def city_cost_page_html(city: str, state: str, col: float) -> str:
+  cost_lo = f"<strong>${int(CONFIG.cost_low * col)}</strong>"
+  cost_hi = f"<strong>${int(CONFIG.cost_high * col)}</strong>"
+
+  localized_paras = [
+    p.replace("{cost_lo}", cost_lo).replace("{cost_hi}", cost_hi)
+    for p in CONFIG.cost_p
+  ]
+
+  inner = make_section(
+    headings=list(CONFIG.cost_h2),
+    paras=localized_paras,
+  )
+
+  return make_page(
+    h1=city_cost_title(city, state),
+    canonical_url=city_url(city, state) + "cost/",
+    nav_key="cost",
+    sub=CONFIG.cost_sub,
+    inner=inner,
+  )
+
 
 def howto_page_html() -> str:
   return make_page(
@@ -966,7 +992,10 @@ def main() -> None:
   # City pages: still generated as /<slug>/index.html
   # (Vercel host-rewrite should route subdomain -> /<slug>/ behind the scenes.)
   for city, state, col in CITIES:
-    write_text(out / city_state_slug(city, state) / "index.html", city_page_html(city, state, col))
+    slug = city_state_slug(city, state)
+
+    write_text(out / slug / "index.html", city_page_html(city, state, col))
+    write_text(out / slug / "cost" / "index.html", city_cost_page_html(city, state, col))
 
   # Sitemap:
   # - root pages absolute on apex
